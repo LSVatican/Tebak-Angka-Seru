@@ -19,17 +19,21 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// State System
+// State System (Mendukung Pemulihan Refresh)
 let currentUser = null;
 let userData = { username: "", avatar: "", totalCorrect: 0, totalWrong: 0 };
-let currentRoomCode = null;
+let currentRoomCode = localStorage.getItem("currentRoomCode") || null;
+let isMultiplayer = localStorage.getItem("isMultiplayer") === "true";
+let isHost = localStorage.getItem("isHost") === "true";
 let roomListener = null;
-let isMultiplayer = false;
-let isHost = false;
 
 // Game Engine State
-let maxNumber = 50, secretNumber = 0, timeLeft = 120, timerInterval;
-let localCorrect = 0, localWrong = 0;
+let maxNumber = parseInt(localStorage.getItem("maxNumber")) || 50;
+let secretNumber = parseInt(localStorage.getItem("secretNumber")) || 0;
+let timeLeft = parseInt(localStorage.getItem("timeLeft")) || 120;
+let timerInterval;
+let localCorrect = parseInt(localStorage.getItem("localCorrect")) || 0;
+let localWrong = parseInt(localStorage.getItem("localWrong")) || 0;
 
 const pages = {
     login: document.getElementById('login-page'),
@@ -48,7 +52,33 @@ function switchPage(targetPage) {
     targetPage.classList.remove('hidden');
 }
 
-// ================= SYNC AUTH & PROFILE USER =================
+// Save Game State Ke LocalStorage agar tidak hilang saat Refresh
+function saveStateToLocalStorage() {
+    localStorage.setItem("currentRoomCode", currentRoomCode || "");
+    localStorage.setItem("isMultiplayer", isMultiplayer);
+    localStorage.setItem("isHost", isHost);
+    localStorage.setItem("maxNumber", maxNumber);
+    localStorage.setItem("secretNumber", secretNumber);
+    localStorage.setItem("timeLeft", timeLeft);
+    localStorage.setItem("localCorrect", localCorrect);
+    localStorage.setItem("localWrong", localWrong);
+}
+
+// Clear State LocalStorage saat keluar game/selesai
+function clearGameStateStorage() {
+    localStorage.removeItem("currentRoomCode");
+    localStorage.removeItem("isMultiplayer");
+    localStorage.removeItem("isHost");
+    localStorage.removeItem("maxNumber");
+    localStorage.removeItem("secretNumber");
+    localStorage.removeItem("timeLeft");
+    localStorage.removeItem("localCorrect");
+    localStorage.removeItem("localWrong");
+    currentRoomCode = null; isMultiplayer = false; isHost = false;
+    localCorrect = 0; localWrong = 0; timeLeft = 120;
+}
+
+// ================= SYNC AUTH & RESTORE AFTER REFRESH =================
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
@@ -67,7 +97,27 @@ async function loadUserData(user) {
     if (docSnap.exists()) {
         userData = docSnap.data();
         updateUserUI();
-        switchPage(pages.main);
+        
+        // CEK PEMULIHAN REFRESH BROWSER
+        const savedPageState = localStorage.getItem("currentRoomCode");
+        const wasInGame = parseInt(localStorage.getItem("timeLeft")) > 0 && parseInt(localStorage.getItem("timeLeft")) < 120;
+
+        if (isMultiplayer && savedPageState) {
+            // Jika sebelumnya di room lobby atau game multiplayer
+            listenToRoom(currentRoomCode);
+            if (wasInGame) {
+                setupGameArenaUI(true);
+                resumeTimer(true);
+            } else {
+                switchPage(pages.lobby);
+            }
+        } else if (!isMultiplayer && wasInGame) {
+            // Jika sebelumnya sedang bermain singleplayer
+            setupGameArenaUI(false);
+            resumeTimer(false);
+        } else {
+            switchPage(pages.main);
+        }
     } else {
         document.getElementById('register-modal').classList.remove('hidden');
     }
@@ -116,7 +166,7 @@ document.getElementById('save-edit-btn').addEventListener('click', async () => {
     document.getElementById('profile-modal').classList.add('hidden');
 });
 
-// Hapus Akun Total (Konfirmasi Kode Acak)
+// Hapus Akun Total
 document.getElementById('delete-data-btn').addEventListener('click', async () => {
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const validationInput = prompt(`PERINGATAN! Tindakan ini akan menghapus seluruh data kamu.\nKetik kode berikut untuk konfirmasi: ${randomCode}`);
@@ -144,13 +194,17 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 // ================= MODE BERMAIN SELECTION =================
 document.getElementById('menu-single-btn').addEventListener('click', () => {
     isMultiplayer = false; isHost = false; currentRoomCode = null;
+    saveStateToLocalStorage();
     document.getElementById('setup-title').innerText = "Pengaturan Singleplayer";
+    document.getElementById('start-btn').innerText = "Mulai Permainan";
     switchPage(pages.setup);
 });
 
 document.getElementById('menu-create-room-btn').addEventListener('click', () => {
     isMultiplayer = true; isHost = true;
+    saveStateToLocalStorage();
     document.getElementById('setup-title').innerText = "Pengaturan Room Multiplayer";
+    document.getElementById('start-btn').innerText = "Buat & Masuk Lobby";
     switchPage(pages.setup);
 });
 
@@ -187,6 +241,7 @@ startBtn.addEventListener('click', async () => {
     } else {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         currentRoomCode = code;
+        saveStateToLocalStorage();
 
         const roomData = {
             roomCode: code, hostId: currentUser.uid, hostName: userData.username, status: "waiting", maxNumber: maxNumber,
@@ -200,13 +255,13 @@ startBtn.addEventListener('click', async () => {
 });
 
 function startSingleplayerGame() {
-    setupGameArenaUI(false);
+    timeLeft = 120;
     secretNumber = Math.floor(Math.random() * maxNumber) + 1;
-    startTimer(false);
+    setupGameArenaUI(false);
+    resumeTimer(false);
 }
 
 function setupGameArenaUI(multiMode) {
-    localCorrect = 0; localWrong = 0;
     document.getElementById('display-max').innerText = maxNumber;
     document.getElementById('feedback').innerText = ""; guessInput.value = "";
 
@@ -220,17 +275,19 @@ function setupGameArenaUI(multiMode) {
     switchPage(pages.game);
 }
 
-function startTimer(multiMode) {
-    timeLeft = 120;
+// Timer yang aman dan melanjutkan sisa detik saat refresh browser
+function resumeTimer(multiMode) {
+    clearInterval(timerInterval);
     timerInterval = setInterval(async () => {
         timeLeft--;
+        saveStateToLocalStorage();
+        
         let mins = Math.floor(timeLeft / 60), secs = timeLeft % 60;
         document.getElementById('timer').innerText = `${mins < 10 ? '0'+mins : mins}:${secs < 10 ? '0'+secs : secs}`;
 
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             if (!multiMode) {
-                // Simpan Akumulasi Data dari Singleplayer ke Firestore
                 userData.totalCorrect += localCorrect;
                 userData.totalWrong += localWrong;
                 await updateDoc(doc(db, "players", currentUser.uid), { totalCorrect: userData.totalCorrect, totalWrong: userData.totalWrong });
@@ -239,6 +296,7 @@ function startTimer(multiMode) {
                 document.getElementById('stat-wrong').innerText = localWrong;
                 document.getElementById('single-result-box').classList.remove('hidden');
                 document.getElementById('multi-result-box').classList.add('hidden');
+                clearGameStateStorage();
                 switchPage(pages.result);
             } else if (multiMode && isHost) {
                 await updateDoc(doc(db, "rooms", currentRoomCode), { status: "finished" });
@@ -248,12 +306,18 @@ function startTimer(multiMode) {
 }
 
 
-// ================= MULTIPLAYER CORE SYNC =================
+// ================= MULTIPLAYER LOBBY SYSTEM & REALTIME SYNC =================
 function listenToRoom(code) {
     if (roomListener) roomListener();
 
     roomListener = onSnapshot(doc(db, "rooms", code), async (docSnap) => {
-        if (!docSnap.exists()) { exitRoomCleanup(); return; }
+        if (!docSnap.exists()) { 
+            // Jika room sudah dihapus/bubar saat ditinggalkan
+            if(!pages.main.classList.contains('hidden')) return;
+            alert("Room telah dibubarkan."); 
+            exitRoomCleanup(); 
+            return; 
+        }
         const roomData = docSnap.data();
 
         if (!roomData.players[currentUser.uid]) { alert("Kamu telah dikick."); exitRoomCleanup(); return; }
@@ -264,7 +328,7 @@ function listenToRoom(code) {
         const playersList = Object.keys(roomData.players);
         document.getElementById('lobby-room-slots').innerText = `${playersList.length}/5`;
 
-        // Render List Lobby
+        // Render List Lobby Pemain
         const playerListUI = document.getElementById('lobby-player-list'); playerListUI.innerHTML = "";
         playersList.forEach(pId => {
             const p = roomData.players[pId];
@@ -272,29 +336,46 @@ function listenToRoom(code) {
             playerListUI.innerHTML += `<li><span>${p.avatar} ${p.name}</span> ${kickBtn}</li>`;
         });
 
+        const waitMsg = document.getElementById('player-wait-msg');
+        
         if(isHost) {
+            // Pasang event listener untuk tombol kick milik host
             document.querySelectorAll('.btn-kick').forEach(btn => {
                 btn.addEventListener('click', (e) => kickPlayer(e.target.getAttribute('data-id')));
             });
 
-            const waitMsg = document.getElementById('player-wait-msg');
+            // TOMBOL MULAI MANUAL BAGI HOST JIKA PEMAIN MINIMAL 2
             if(playersList.length >= 2 && roomData.status === "waiting") {
-                waitMsg.innerText = "Pemain lengkap! Mengalihkan ke game..."; waitMsg.classList.remove('hidden');
-                setTimeout(() => updateDoc(doc(db, "rooms", currentRoomCode), { status: "playing" }), 2000);
+                waitMsg.innerHTML = `<button id="host-trigger-start-btn" class="btn-primary" style="background:#00ffcc; color:#000;">Mulai Permainan Multiplayer Sekarang</button>`;
+                waitMsg.classList.remove('hidden');
+                
+                // SISTEM KONFIRMASI SEBELUM MULAI MULTIPLAYER
+                document.getElementById('host-trigger-start-btn').onclick = async () => {
+                    if(confirm("Apakah Anda yakin ingin memulai permainan multiplayer sekarang?")) {
+                        await updateDoc(doc(db, "rooms", currentRoomCode), { status: "playing" });
+                    }
+                };
             } else if (playersList.length < 2) {
-                waitMsg.innerText = "Menunggu pemain lain (Min 2 pemain)..."; waitMsg.classList.remove('hidden');
+                waitMsg.innerText = "Menunggu pemain lain bergabung (Minimal 2 pemain agar Host dapat memulai)...";
+                waitMsg.classList.remove('hidden');
+            }
+        } else {
+            if(roomData.status === "waiting") {
+                waitMsg.innerText = "Menunggu Host memulai permainan...";
+                waitMsg.classList.remove('hidden');
             }
         }
 
+        // Transisi masuk arena game
         if (roomData.status === "playing" && pages.game.classList.contains('hidden')) {
             maxNumber = roomData.maxNumber; secretNumber = roomData.secretNumber;
-            setupGameArenaUI(true); startTimer(true);
+            saveStateToLocalStorage();
+            setupGameArenaUI(true); resumeTimer(true);
         }
 
         if (roomData.status === "playing") renderInGameStatus(roomData.players);
 
         if (roomData.status === "finished") {
-            // Pembaruan akumulasi total statistik dari hasil permainan multiplayer saat game selesai
             const myFinalScore = roomData.players[currentUser.uid];
             userData.totalCorrect += myFinalScore.correct;
             userData.totalWrong += myFinalScore.wrong;
@@ -303,6 +384,7 @@ function listenToRoom(code) {
             renderFinalScoreboard(roomData.players);
             document.getElementById('single-result-box').classList.add('hidden');
             document.getElementById('multi-result-box').classList.remove('hidden');
+            clearGameStateStorage();
             switchPage(pages.result);
         }
     });
@@ -333,8 +415,10 @@ async function leaveRoomAction() {
 }
 
 function exitRoomCleanup() {
-    if (roomListener) roomListener(); roomListener = null; currentRoomCode = null;
-    isHost = false; isMultiplayer = false; clearInterval(timerInterval); switchPage(pages.main);
+    if (roomListener) roomListener(); roomListener = null; 
+    clearInterval(timerInterval); 
+    clearGameStateStorage();
+    switchPage(pages.main);
 }
 
 
@@ -345,7 +429,8 @@ document.getElementById('guess-btn').addEventListener('click', async () => {
 
     if (userGuess === secretNumber) {
         localCorrect++; feedback.innerText = "🎉 Benar! Angka diacak kembali!"; feedback.style.color = "#00ffcc";
-        if (!isMultiplayer) { secretNumber = Math.floor(Math.random() * maxNumber) + 1; } 
+        saveStateToLocalStorage();
+        if (!isMultiplayer) { secretNumber = Math.floor(Math.random() * maxNumber) + 1; saveStateToLocalStorage(); } 
         else {
             const newSecret = Math.floor(Math.random() * maxNumber) + 1;
             const payload = { [`players.${currentUser.uid}.correct`]: localCorrect };
@@ -355,6 +440,7 @@ document.getElementById('guess-btn').addEventListener('click', async () => {
     } else {
         localWrong++; feedback.innerText = userGuess < secretNumber ? "❌ Terlalu KECIL!" : "❌ Terlalu BESAR!";
         feedback.style.color = "#ff3366";
+        saveStateToLocalStorage();
         if(isMultiplayer) await updateDoc(doc(db, "rooms", currentRoomCode), { [`players.${currentUser.uid}.wrong`]: localWrong });
     }
     inputEl.value = ""; inputEl.focus();
@@ -364,7 +450,22 @@ onSnapshot(doc(db, "rooms", currentRoomCode || "dummy"), (snap) => {
     if(isMultiplayer && snap.exists()){
         const data = snap.data();
         if(data.status === "playing" && data.secretNumber !== secretNumber) {
-            secretNumber = data.secretNumber; feedback.innerText = "🔄 Angka diacak ulang!";
+            secretNumber = data.secretNumber; saveStateToLocalStorage();
+            document.getElementById('feedback').innerText = "🔄 Angka diacak ulang oleh host!";
+            document.getElementById('feedback').style.color = "#00f0ff";
+        }
+    }
+});
+
+
+// ================= TOMBOL BERHENTI BERMAIN (DI SEMUA MODE) =================
+document.getElementById('stop-game-btn').addEventListener('click', async () => {
+    // SISTEM KONFIRMASI BERHENTI BERMAIN
+    if (confirm("Apakah Anda yakin ingin berhenti bermain? Skor sesi ini tidak akan diakumulasikan.")) {
+        if (isMultiplayer) {
+            await leaveRoomAction();
+        } else {
+            exitRoomCleanup();
         }
     }
 });
@@ -424,6 +525,7 @@ async function joinRoomAction(code) {
             transaction.update(roomRef, { players: roomData.players });
         });
         currentRoomCode = code; isMultiplayer = true; isHost = false;
+        saveStateToLocalStorage();
         document.getElementById('join-code-modal').classList.add('hidden'); listenToRoom(code); switchPage(pages.lobby);
     } catch (e) { alert(e); }
 }
