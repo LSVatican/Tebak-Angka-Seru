@@ -1,265 +1,470 @@
+/* ================= GLOBAL RESET & VARIABEL TEMA BARU ================= */
 * {
-    box-sizing: border-box;
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+:root {
+    /* Latar Belakang Baru (Deep Space Violet/Navy) */
+    --bg-gradient: linear-gradient(135deg, #0b0b16 0%, #16162d 100%);
+    --card-bg: rgba(26, 26, 46, 0.9);
+    
+    /* Warna Teks */
+    --text-main: #f0f0f8;
+    --text-muted: #a0a0c0;
+    
+    /* Skema Warna Tombol Baru */
+    --primary-color: #00e5ff;       /* Electric Cyan */
+    --primary-glow: #00e5ff88;
+    
+    --secondary-color: #9d4edd;     /* Neon Purple */
+    --secondary-glow: #9d4edd88;
+    
+    --danger-color: #ff0055;        /* Neon Red/Pink */
+    --danger-glow: #ff005588;
+    
+    --success-color: #00ff87;       /* Neon Mint Green */
+    
+    /* Stroke Border & Glow */
+    --border-glow: 2px solid #3a3a6a;
+    --border-active-glow: 2px solid #00e5ff;
+}
+
 body {
-    background-color: #0f0f1a;
-    color: #ffffff;
+    background: var(--bg-gradient);
+    color: var(--text-main);
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    padding: 20px;
+    overflow-x: hidden;
 }
 
+/* ================= CONTAINER & CARDS ================= */
 .container {
     width: 100%;
-    max-width: 420px;
-    padding: 20px;
+    max-width: 480px;
+    position: relative;
 }
 
 .card {
-    background: #16162a;
-    border: 2px solid #32325d;
-    border-radius: 15px;
-    padding: 25px;
-    text-align: center;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    background: var(--card-bg);
+    border: var(--border-glow);
+    border-radius: 20px;
+    padding: 30px 25px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(58, 58, 106, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.4s ease;
+    animation: fadeIn 0.5s ease-out;
 }
 
 .card:hover {
-    border-color: #ff007f;
-    box-shadow: 0 0 20px rgba(255, 0, 127, 0.3);
+    border-color: #515191;
+    box-shadow: 0 0 35px rgba(0, 229, 255, 0.15), inset 0 0 20px rgba(81, 81, 145, 0.4);
+}
+
+.hidden {
+    display: none !important;
 }
 
 h2 {
-    color: #00f0ff;
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+    font-size: 26px;
+    text-align: center;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    background: linear-gradient(90deg, #00e5ff, #9d4edd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
 }
 
+h3 {
+    font-size: 18px;
+    color: var(--text-main);
+    margin-bottom: 15px;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #2d2d54;
+    margin: 20px 0;
+}
+
+/* ================= WATERMARK SIGNATURE ================= */
 .watermark {
     font-size: 12px;
-    color: #ff00ea;
-    margin-bottom: 20px;
-    font-weight: bold;
-    letter-spacing: 1px;
-    text-shadow: 0 0 5px rgba(255, 0, 234, 0.5);
+    text-align: center;
+    color: var(--text-muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 25px;
+    font-weight: 600;
+    opacity: 0.7;
 }
 
-/* Navigasi Profil Kecil di Atas */
+/* ================= USER NAV BAR ================= */
 .user-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
-    background: #0f0f1a;
-    padding: 8px 15px;
-    border-radius: 20px;
-    border: 1px solid #32325d;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid #2d2d54;
+    padding: 10px 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
     cursor: pointer;
-    margin-bottom: 15px;
-    transition: 0.3s;
+    transition: all 0.3s;
 }
 
 .user-bar:hover {
-    border-color: #00ffcc;
+    background: rgba(0, 229, 255, 0.08);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
 }
 
-/* Kumpulan Tombol */
-.menu-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+#nav-avatar {
+    font-size: 20px;
 }
 
-button {
+#nav-username {
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* ================= FORM INPUTS ================= */
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+input[type="text"], input[type="number"] {
     width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
+    padding: 14px 16px;
+    background: rgba(15, 15, 35, 0.8);
+    border: 1px solid #3a3a6a;
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 16px;
+    outline: none;
     transition: all 0.3s ease;
 }
 
-.btn-primary { background: linear-gradient(45deg, #ff007f, #7f00ff); }
-.btn-secondary { background: #252538; border: 1px solid #32325d; }
-.btn-secondary:hover { border-color: #00f0ff; }
-.btn-danger { background: #8b0000; }
-.btn-danger:hover { background: #cc0000; }
-.btn-back { background: #444; margin-top: 15px; }
-
-button:disabled {
-    background: #252538;
-    color: #555577;
-    cursor: not-allowed;
-    border: 1px solid #32325d;
+input[type="text"]:focus, input[type="number"]:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px var(--primary-glow);
+    background: rgba(20, 20, 45, 0.9);
 }
 
-input[type="number"], input[type="text"] {
+.warning-text {
+    color: var(--danger-color);
+    font-size: 12px;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+/* ================= BUTTONS SYSTEM (STYLING BARU) ================= */
+button {
     width: 100%;
-    padding: 12px;
-    background: #0f0f1a;
-    border: 2px solid #32325d;
-    border-radius: 8px;
-    color: #fff;
+    padding: 14px 20px;
     font-size: 15px;
-    outline: none;
-}
-
-input:focus {
-    border-color: #00ffcc;
-    box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
-}
-
-.warning-text { color: #ff3333; font-size: 12px; margin-top: 5px; min-height: 18px; font-weight: bold; }
-.timer-box { font-size: 22px; color: #ffcc00; margin-bottom: 15px; }
-.correct { color: #00ffcc; font-weight: bold; }
-.wrong { color: #ff3366; font-weight: bold; }
-.hidden { display: none !important; }
-hr { border: 1px solid #32325d; margin: 15px 0; }
-
-/* Sistem Leaderboard */
-#leaderboard-list {
-    text-align: left;
-    padding-left: 20px;
-    margin: 15px 0;
-}
-#leaderboard-list li {
-    padding: 8px 0;
-    border-bottom: 1px solid #20203c;
-    font-size: 16px;
-}
-
-/* Desain Pop Up / Modal */
-.modal {
-    position: fixed;
-    z-index: 100;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.7);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    margin-bottom: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.modal-content {
-    background-color: #16162a;
-    border: 2px solid #00f0ff;
-    padding: 25px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 360px;
-    text-align: center;
-    position: relative;
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+/* Tombol Primary (Electric Cyan) */
+#google-login-btn, #start-btn, .btn-primary, #guess-btn {
+    background: var(--primary-color);
+    color: #050510;
+    box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);
 }
 
-.close-modal {
-    position: absolute;
-    right: 15px;
-    top: 10px;
-    font-size: 24px;
-    cursor: pointer;
-    color: #aaa;
+#google-login-btn:hover, #start-btn:not(:disabled):hover, .btn-primary:hover, #guess-btn:hover {
+    background: #00b8d4;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 229, 255, 0.5);
 }
-.close-modal:hover { color: #fff; }
 
-/* Gabungkan dengan style.css kamu sebelumnya, tambahkan bagian baru ini */
+button:disabled {
+    background: #252538 !important;
+    color: #555575 !important;
+    border: 1px solid #33334d !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
 
+/* Tombol Secondary (Neon Purple Outline/Solid) */
+.btn-secondary {
+    background: rgba(157, 78, 221, 0.1);
+    color: #e0aaff;
+    border: 1px solid var(--secondary-color);
+}
+
+.btn-secondary:hover {
+    background: var(--secondary-color);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--secondary-glow);
+}
+
+/* Tombol Danger (Neon Red/Pink) */
+.btn-danger, #stop-game-btn {
+    background: rgba(255, 0, 85, 0.1) !important;
+    color: #ff99bb !important;
+    border: 1px solid var(--danger-color) !important;
+}
+
+.btn-danger:hover, #stop-game-btn:hover {
+    background: var(--danger-color) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--danger-glow) !important;
+}
+
+/* Tombol Kembali (Muted Dark) */
+.btn-back {
+    background: #252538;
+    color: var(--text-main);
+    border: 1px solid #3a3a6a;
+}
+
+.btn-back:hover {
+    background: #33334d;
+    transform: translateY(-2px);
+}
+
+/* ================= LOBBY ROOM COMPONENTS ================= */
 .room-info-box {
-    background: #0f0f1a;
-    padding: 10px;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px dashed #3a3a6a;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
     margin-bottom: 15px;
-    border: 1px solid #32325d;
 }
 
 #lobby-player-list {
     list-style: none;
-    text-align: left;
-    margin: 15px 0;
+    margin-top: 10px;
 }
 
 #lobby-player-list li {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #252542;
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #1f1f38;
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 6px;
-    border: 1px solid #32325d;
 }
 
 .btn-kick {
-    background: #ff3333;
-    padding: 4px 8px;
+    background: #ff0055;
+    color: white;
+    padding: 4px 10px;
     font-size: 11px;
+    border-radius: 6px;
     width: auto;
-    border-radius: 4px;
+    margin: 0;
 }
 
-/* Server List Grid */
-.server-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-height: 250px;
-    overflow-y: auto;
-    margin: 15px 0;
+/* ================= GAMEPLAY AREA STYLING ================= */
+.timer-box {
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+    color: #ffcc00;
+    text-shadow: 0 0 10px rgba(255, 204, 0, 0.3);
+    margin-bottom: 15px;
+    background: rgba(255, 204, 0, 0.05);
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 204, 0, 0.2);
 }
 
-.server-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #1f1f38;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #32325d;
-}
-
-/* In-game Pemain Status Area */
-#ingame-players-status {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    flex-wrap: wrap;
+#clue {
+    text-align: center;
+    font-size: 15px;
+    color: var(--text-muted);
     margin-bottom: 20px;
 }
 
-.player-status-card {
-    background: #0f0f1a;
-    border: 1px solid #32325d;
-    padding: 8px;
-    border-radius: 8px;
+#feedback {
     text-align: center;
-    min-width: 80px;
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 15px;
+    min-height: 24px;
+}
+
+/* Grid Status Pemain Saat Bermain */
+#ingame-players-status {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.player-status-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid #2d2d54;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .player-status-card .avatar {
-    font-size: 24px;
-    display: block;
+    font-size: 22px;
+    margin-bottom: 4px;
+}
+
+.player-status-card small {
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
 }
 
 .player-status-card .score {
-    font-size: 12px;
-    margin-top: 4px;
+    margin-top: 5px;
+    font-size: 14px;
+    font-weight: bold;
 }
 
-/* Scoreboard Hasil Akhir */
-.score-row {
+/* ================= SERVER LIST GRID ================= */
+.server-grid {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.server-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid #232342;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
-    background: #1f1f38;
-    padding: 10px;
-    margin-top: 5px;
-    border-radius: 6px;
+    align-items: center;
 }
+
+/* ================= RESULTS & LEADERBOARDS ================= */
+.stats {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #252545;
+    margin-bottom: 15px;
+}
+
+.stats p, .score-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 15px;
+}
+
+.correct { color: var(--success-color); font-weight: bold; }
+.wrong { color: var(--danger-color); font-weight: bold; }
+
+#leaderboard-list {
+    padding-left: 5px;
+    list-style: none;
+}
+
+#leaderboard-list li {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 4px solid var(--secondary-color);
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: 0 10px 10px 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+#leaderboard-list li:nth-child(1) { border-left-color: #ffcc00; background: rgba(255, 204, 0, 0.05); }
+#leaderboard-list li:nth-child(2) { border-left-color: #e5e5e5; background: rgba(229, 229, 229, 0.04); }
+#leaderboard-list li:nth-child(3) { border-left-color: #b87333; background: rgba(184, 115, 51, 0.03); }
+
+/* ================= MODAL / POP UP ================= */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(5, 5, 15, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    background: #1a1a32;
+    border: 2px solid #3e3e70;
+    width: 90%;
+    max-width: 400px;
+    padding: 25px;
+    border-radius: 20px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+.close-modal {
+    position: absolute;
+    top: 15px; right: 20px;
+    font-size: 28px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-modal:hover { color: var(--danger-color); }
+
+.profile-display {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 15px;
+    margin: 15px 0;
+    border: 1px solid #2d2d54;
+}
+
+/* ================= ANIMASI COMPONENTS ================= */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3a3a6a; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
