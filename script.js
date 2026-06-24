@@ -2,14 +2,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// ====== MASUKKAN KONFIGURASI FIREBASE KAMU DI SINI ======
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSyYOUR_API_KEY_HERE",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAFRcq7R25kUVRNX02NHch7HSE3UgaecqU",
+  authDomain: "tebak-angka-478ff.firebaseapp.com",
+  databaseURL: "https://tebak-angka-478ff-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tebak-angka-478ff",
+  storageBucket: "tebak-angka-478ff.firebasestorage.app",
+  messagingSenderId: "252023470469",
+  appId: "1:252023470469:web:db10ed1b57f1b6e97b6cec",
+  measurementId: "G-YLQ0LYCV23"
 };
 
 // Inisialisasi Firebase
