@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// ====== PASTE KONFIGURASI FIREBASE KAMU DI SINI ======
 const firebaseConfig = {
   apiKey: "AIzaSyAFRcq7R25kUVRNX02NHch7HSE3UgaecqU",
   authDomain: "tebak-angka-478ff.firebaseapp.com",
@@ -20,249 +20,235 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// Penampung Data Elemen HTML
+// DOM Navigasi Halaman
 const pages = {
     login: document.getElementById('login-page'),
-    menu: document.getElementById('main-menu-page'),
+    main: document.getElementById('main-page'),
     setup: document.getElementById('setup-page'),
     game: document.getElementById('game-page'),
-    result: document.getElementById('game-result-page'),
+    result: document.getElementById('result-page'),
     stats: document.getElementById('stats-page'),
     leaderboard: document.getElementById('leaderboard-page'),
-    profilePopup: document.getElementById('profile-popup')
 };
 
-// State Data Global Sesi Ini
+// State Pengguna & Gameplay Global
 let currentUser = null;
-let userData = { name: "", emoji: "👤", totalCorrect: 0, totalWrong: 0 };
-let maxNumber = 0;
-let secretNumber = 0;
-let timeLeft = 120;
-let timerInterval;
-let sessionCorrect = 0;
-let sessionWrong = 0;
+let userData = { username: "", avatar: "", totalCorrect: 0, totalWrong: 0 };
+let maxNumber = 0, secretNumber = 0, timeLeft = 120, timerInterval;
+let sessionCorrect = 0, sessionWrong = 0;
 
-// Menangani Perubahan Status Autentikasi User (Login/Logout)
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        currentUser = user;
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
+function switchPage(targetPage) {
+    Object.values(pages).forEach(p => p.classList.add('hidden'));
+    targetPage.classList.remove('hidden');
+}
 
-        if (docSnap.exists()) {
-            userData = docSnap.data();
-            updateMenuUI();
-            switchPage('menu');
-        } else {
-            // User baru terdaftar, munculkan paksa pop-up konfigurasi profil kustom
-            document.getElementById('popup-title').innerText = "Pengguna Baru!";
-            document.getElementById('profile-name').value = user.displayName || "";
-            document.getElementById('profile-emoji').value = "🎮";
-            document.getElementById('close-profile-btn').classList.add('hidden');
-            document.getElementById('delete-data-btn').classList.add('hidden');
-            document.getElementById('danger-zone-hr').classList.add('hidden');
-            switchPage('menu');
-            pages.profilePopup.classList.remove('hidden');
-        }
+// ================= SYNC DATA USER DENGAN DATABASE =================
+async function loadUserData(user) {
+    currentUser = user;
+    const docRef = doc(db, "players", user.uid);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        userData = docSnap.data();
+        updateUserUI();
+        switchPage(pages.main);
     } else {
-        currentUser = null;
-        switchPage('login');
+        // User baru, tampilkan modal registrasi avatar emoji & nama custom
+        document.getElementById('register-modal').classList.remove('hidden');
     }
-});
-
-function switchPage(pageKey) {
-    Object.keys(pages).forEach(key => {
-        if (key === 'profilePopup') return;
-        pages[key].classList.add('hidden');
-    });
-    pages[pageKey].classList.remove('hidden');
 }
 
-function updateMenuUI() {
-    document.getElementById('menu-user-emoji').innerText = userData.emoji;
-    document.getElementById('menu-user-name').innerText = userData.name;
+function updateUserUI() {
+    document.getElementById('nav-username').innerText = userData.username;
+    document.getElementById('nav-avatar').innerText = userData.avatar;
+    document.getElementById('profile-name-view').innerText = userData.username;
+    document.getElementById('profile-avatar-view').innerText = userData.avatar;
+    document.getElementById('edit-username').value = userData.username;
+    document.getElementById('edit-avatar').value = userData.avatar;
 }
 
-// === FITUR LOGIN / LOGOUT ===
-document.getElementById('login-google-btn').addEventListener('click', () => {
-    signInWithPopup(auth, provider).catch(err => alert("Gagal Login: " + err.message));
+// ================= EVENT LISTENER AUTENTIKASI GOOGLE =================
+document.getElementById('google-login-btn').addEventListener('click', () => {
+    signInWithPopup(auth, provider).then((res) => {
+        loadUserData(res.user);
+    }).catch(err => alert("Gagal login: " + err.message));
 });
 
+// Registrasi Pemain Baru
+document.getElementById('save-reg-btn').addEventListener('click', async () => {
+    const name = document.getElementById('reg-username').value.trim();
+    const av = document.getElementById('reg-avatar').value.trim();
+    
+    if(!name || !av) return alert("Semua kolom harus diisi!");
+
+    userData = { username: name, avatar: av, totalCorrect: 0, totalWrong: 0 };
+    await setDoc(doc(db, "players", currentUser.uid), userData);
+    
+    document.getElementById('register-modal').classList.add('hidden');
+    updateUserUI();
+    switchPage(pages.main);
+});
+
+// Logout Akun dengan Konfirmasi
 document.getElementById('logout-btn').addEventListener('click', () => {
-    if (confirm("Apakah anda yakin ingin keluar/logout?")) {
-        signOut(auth);
+    if (confirm("Apakah kamu yakin ingin keluar?")) {
+        signOut(auth).then(() => {
+            switchPage(pages.login);
+            currentUser = null;
+        });
     }
 });
 
-// === MANAJEMEN PROFIL POP UP ===
-document.getElementById('open-profile-btn').addEventListener('click', () => {
-    document.getElementById('popup-title').innerText = "Edit Profil";
-    document.getElementById('profile-name').value = userData.name;
-    document.getElementById('profile-emoji').value = userData.emoji;
-    document.getElementById('close-profile-btn').classList.remove('hidden');
-    document.getElementById('delete-data-btn').classList.remove('hidden');
-    document.getElementById('danger-zone-hr').classList.remove('hidden');
-    pages.profilePopup.classList.remove('hidden');
-});
-
-document.getElementById('close-profile-btn').addEventListener('click', () => {
-    pages.profilePopup.classList.add('hidden');
-});
-
-// Regex deteksi pola Emoji tunggal secara universal
-const emojiRegex = /^(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])$/;
-
-document.getElementById('save-profile-btn').addEventListener('click', async () => {
-    const inputName = document.getElementById('profile-name').value.trim();
-    const inputEmoji = document.getElementById('profile-emoji').value.trim();
-    const warning = document.getElementById('profile-warning');
-
-    if (!inputName || !inputEmoji) {
-        warning.innerText = "Semua input profil wajib diisi!";
-        return;
-    }
-    if (!emojiRegex.test(inputEmoji)) {
-        warning.innerText = "Kolom foto profil hanya boleh diisi 1 karakter emoji!";
-        return;
-    }
-
-    warning.innerText = "";
-    userData.name = inputName;
-    userData.emoji = inputEmoji;
-
-    // Simpan permanen ke Firestore Database Cloud
-    await setDoc(doc(db, "users", currentUser.uid), userData, { merge: true });
-    updateMenuUI();
-    pages.profilePopup.classList.add('hidden');
-});
-
-// === SYSTEM HAPUS DATA & AKUN BERBASIS KODE ACAK ===
+// Hapus Akun & Data (Mengulang dari awal) dengan Kode Acak
 document.getElementById('delete-data-btn').addEventListener('click', async () => {
     const randomCode = Math.floor(1000 + Math.random() * 9000);
-    const confirmInput = prompt(`PERINGATAN! Tindakan ini akan menghapus semua skor akumulasi Anda dari awal.\nKetik kode verifikasi ini untuk menyetujui: ${randomCode}`);
-
-    if (confirmInput === String(randomCode)) {
+    const validationInput = prompt(`PERINGATAN! Tindakan ini akan menghapus semua statistik game kamu dari awal.\nKetik kode berikut untuk konfirmasi: ${randomCode}`);
+    
+    if (validationInput === String(randomCode)) {
         try {
-            const userUid = currentUser.uid;
-            await deleteDoc(doc(db, "users", userUid));
-            pages.profilePopup.classList.add('hidden');
-            await deleteUser(auth.currentUser);
-            alert("Data akun Anda berhasil dihapus total dari database game.");
+            await deleteDoc(doc(db, "players", currentUser.uid));
+            const user = auth.currentUser;
+            await deleteUser(user);
+            alert("Data berhasil dihapus seluruhnya.");
+            document.getElementById('profile-modal').classList.add('hidden');
+            switchPage(pages.login);
         } catch (error) {
-            alert("Sistem membutuhkan re-autentikasi baru. Silakan logout lalu login kembali untuk menghapus akun.");
+            alert("Gagal menghapus data otomatis. Silakan lakukan relogin terlebih dahulu.");
         }
     } else {
         alert("Kode salah! Penghapusan data dibatalkan.");
     }
 });
 
-// === FLOW NAVIGASI UTAMA ===
-document.getElementById('menu-start-btn').addEventListener('click', () => {
-    document.getElementById('max-number').value = "";
-    document.getElementById('setup-warning').innerText = "";
-    document.getElementById('start-game-btn').disabled = true;
-    switchPage('setup');
+// ================= NAVIGASI MENU UTAMA =================
+document.getElementById('menu-play-btn').addEventListener('click', () => switchPage(pages.setup));
+document.getElementById('back-to-main-1').addEventListener('click', () => switchPage(pages.main));
+document.getElementById('back-to-main-2').addEventListener('click', () => switchPage(pages.main));
+document.getElementById('back-to-main-3').addEventListener('click', () => switchPage(pages.main));
+
+// Pop Up Profil
+document.getElementById('open-profile-btn').addEventListener('click', () => {
+    document.getElementById('profile-modal').classList.remove('hidden');
+});
+document.getElementById('close-profile-btn').addEventListener('click', () => {
+    document.getElementById('profile-modal').classList.add('hidden');
 });
 
+// Simpan Edit Profil Pemain
+document.getElementById('save-edit-btn').addEventListener('click', async () => {
+    const newName = document.getElementById('edit-username').value.trim();
+    const newAv = document.getElementById('edit-avatar').value.trim();
+
+    if (!newName || !newAv) return alert("Input tidak boleh kosong!");
+
+    userData.username = newName;
+    userData.avatar = newAv;
+    await updateDoc(doc(db, "players", currentUser.uid), { username: newName, avatar: newAv });
+    updateUserUI();
+    alert("Profil diperbarui!");
+    document.getElementById('profile-modal').classList.add('hidden');
+});
+
+// Pemicu Lihat Statistik Akumulasi
 document.getElementById('menu-stats-btn').addEventListener('click', () => {
-    document.getElementById('total-correct').innerText = userData.totalCorrect || 0;
-    document.getElementById('total-wrong').innerText = userData.totalWrong || 0;
-    switchPage('stats');
+    document.getElementById('total-correct').innerText = userData.totalCorrect;
+    document.getElementById('total-wrong').innerText = userData.totalWrong;
+    switchPage(pages.stats);
 });
 
+// Pemicu Leaderboard Top 10 Global
 document.getElementById('menu-leaderboard-btn').addEventListener('click', async () => {
     const listContainer = document.getElementById('leaderboard-list');
-    listContainer.innerHTML = "<li>Memuat papan peringkat...</li>";
-    switchPage('leaderboard');
+    listContainer.innerHTML = "<li>Memuat rangking...</li>";
+    switchPage(pages.leaderboard);
 
-    // Query 10 user terbaik dengan total jawaban benar terbanyak
-    const q = query(collection(db, "users"), orderBy("totalCorrect", "desc"), limit(10));
+    const q = query(collection(db, "players"), orderBy("totalCorrect", "desc"), limit(10));
     const querySnapshot = await getDocs(q);
     listContainer.innerHTML = "";
 
-    let rank = 1;
-    querySnapshot.forEach((doc) => {
+    querySnapshot.forEach((doc, index) => {
         const data = doc.data();
-        const item = document.createElement('li');
-        item.innerHTML = `<b>#${rank}</b> ${data.emoji} ${data.name} — <span class="correct">${data.totalCorrect || 0} Benar</span>`;
-        listContainer.appendChild(item);
-        rank++;
+        listContainer.innerHTML += `<li><strong>#${index + 1}</strong> ${data.avatar} ${data.username} - ${data.totalCorrect} Benar</li>`;
     });
 });
 
-document.getElementById('back-to-menu-1').addEventListener('click', () => switchPage('menu'));
-document.getElementById('back-to-menu-2').addEventListener('click', () => switchPage('menu'));
-document.getElementById('back-to-menu-3').addEventListener('click', () => switchPage('menu'));
-
-// === LOGIKA SETUP ANGKA PERMAINAN ===
-const maxNumInput = document.getElementById('max-number');
-const startGameBtn = document.getElementById('start-game-btn');
+// ================= LOGIKA GAMEPLAY VALIDASI DAN TIMER =================
+const maxNumberInput = document.getElementById('max-number');
+const startBtn = document.getElementById('start-btn');
 const setupWarning = document.getElementById('setup-warning');
+const guessInput = document.getElementById('guess-input');
+const gameWarning = document.getElementById('game-warning');
 
-maxNumInput.addEventListener('input', () => {
-    let val = maxNumInput.value;
+maxNumberInput.addEventListener('input', () => {
+    let val = maxNumberInput.value;
     if (val === "") {
-        setupWarning.innerText = "Input maksimal angka tidak boleh kosong!";
-        startGameBtn.disabled = true;
+        setupWarning.innerText = "Input tidak boleh kosong!";
+        startBtn.disabled = true;
         return;
     }
     let num = parseInt(val);
     if (num > 50) {
-        setupWarning.innerText = "Maksimal angka yang diperbolehkan adalah 50!";
-        maxNumInput.value = "";
-        startGameBtn.disabled = true;
+        setupWarning.innerText = "Maksimal angka adalah 50!";
+        maxNumberInput.value = ""; 
+        startBtn.disabled = true;
     } else if (num <= 0) {
-        setupWarning.innerText = "Batas minimal angka adalah 1!";
-        startGameBtn.disabled = true;
+        setupWarning.innerText = "Angka harus lebih dari 0!";
+        startBtn.disabled = true;
     } else {
         setupWarning.innerText = "";
-        startGameBtn.disabled = false;
+        startBtn.disabled = false;
     }
-});
-
-// === LOGIKA GAMEPLAY & VALIDASI INPUT ===
-const guessInput = document.getElementById('guess-input');
-const gameWarning = document.getElementById('game-warning');
-const feedback = document.getElementById('feedback');
-
-startGameBtn.addEventListener('click', () => {
-    maxNumber = parseInt(maxNumInput.value);
-    document.getElementById('display-max').innerText = maxNumber;
-    
-    sessionCorrect = 0;
-    sessionWrong = 0;
-    guessInput.value = "";
-    feedback.innerText = "";
-    gameWarning.innerText = "";
-    
-    secretNumber = Math.floor(Math.random() * maxNumber) + 1;
-    switchPage('game');
-    startTimer();
 });
 
 guessInput.addEventListener('input', () => {
     let val = guessInput.value;
-    if (val === "") return;
-    
+    if (val === "") {
+        gameWarning.innerText = "";
+        return;
+    }
     let num = parseInt(val);
     if (num > maxNumber) {
-        gameWarning.innerText = `Angka melebihi batas maksimal (${maxNumber})!`;
-        guessInput.value = "";
+        gameWarning.innerText = `Melebihi batas maksimal (${maxNumber})!`;
+        guessInput.value = ""; 
     } else {
         gameWarning.innerText = "";
     }
 });
 
+// Mulai Bermain
+startBtn.addEventListener('click', () => {
+    maxNumber = parseInt(maxNumberInput.value);
+    document.getElementById('display-max').innerText = maxNumber;
+    sessionCorrect = 0;
+    sessionWrong = 0;
+    secretNumber = Math.floor(Math.random() * maxNumber) + 1;
+    
+    switchPage(pages.game);
+    startTimer();
+});
+
 function startTimer() {
-    timeLeft = 120; // 2 Menit mundur
-    timerInterval = setInterval(() => {
-        let min = Math.floor(timeLeft / 60);
-        let sec = timeLeft % 60;
-        document.getElementById('timer').innerText = `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
+    timeLeft = 120;
+    timerInterval = setInterval(async () => {
+        let mins = Math.floor(timeLeft / 60);
+        let secs = timeLeft % 60;
+        document.getElementById('timer').innerText = `${mins < 10 ? '0'+mins : mins}:${secs < 10 ? '0'+secs : secs}`;
 
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
-            finishGameSess();
+            
+            // Perbarui Data Cloud Firestore
+            userData.totalCorrect += sessionCorrect;
+            userData.totalWrong += sessionWrong;
+            await updateDoc(doc(db, "players", currentUser.uid), {
+                totalCorrect: userData.totalCorrect,
+                totalWrong: userData.totalWrong
+            });
+
+            // Tampilkan Sesi Statistik Halaman
+            document.getElementById('stat-correct').innerText = sessionCorrect;
+            document.getElementById('stat-wrong').innerText = sessionWrong;
+            switchPage(pages.result);
         }
         timeLeft--;
     }, 1000);
@@ -270,23 +256,21 @@ function startTimer() {
 
 document.getElementById('guess-btn').addEventListener('click', () => {
     const userGuess = parseInt(guessInput.value);
+    const feedback = document.getElementById('feedback');
+
     if (isNaN(userGuess) || guessInput.value === "") {
-        feedback.innerText = "Masukkan angka terlebih dahulu!";
+        feedback.innerText = "Ketik angka dulu!";
         feedback.style.color = "#ff3333";
         return;
     }
 
     if (userGuess === secretNumber) {
-        feedback.innerText = "🎉 Benar! Angka rahasia di-acak kembali.";
+        feedback.innerText = "🎉 Benar! Angka diacak kembali!";
         feedback.style.color = "#00ffcc";
         sessionCorrect++;
         secretNumber = Math.floor(Math.random() * maxNumber) + 1;
-    } else if (userGuess < secretNumber) {
-        feedback.innerText = "❌ Tebakan terlalu KECIL!";
-        feedback.style.color = "#ff3366";
-        sessionWrong++;
     } else {
-        feedback.innerText = "❌ Tebakan terlalu BESAR!";
+        feedback.innerText = userGuess < secretNumber ? "❌ Terlalu KECIL!" : "❌ Terlalu BESAR!";
         feedback.style.color = "#ff3366";
         sessionWrong++;
     }
@@ -294,23 +278,15 @@ document.getElementById('guess-btn').addEventListener('click', () => {
     guessInput.focus();
 });
 
-// Sesi Game Berakhir & Akumulasi Data Ke Cloud Firestore
-async function finishGameSess() {
-    switchPage('result');
-    document.getElementById('session-correct').innerText = sessionCorrect;
-    document.getElementById('session-wrong').innerText = sessionWrong;
+document.getElementById('restart-btn').addEventListener('click', () => {
+    document.getElementById('feedback').innerText = "";
+    maxNumberInput.value = "";
+    startBtn.disabled = true;
+    switchPage(pages.main);
+});
 
-    // Kalkulasi nilai total akumulasi
-    userData.totalCorrect = (userData.totalCorrect || 0) + sessionCorrect;
-    userData.totalWrong = (userData.totalWrong || 0) + sessionWrong;
-
-    // Kirim data ter-update ke server
-    await updateDoc(doc(db, "users", currentUser.uid), {
-        totalCorrect: userData.totalCorrect,
-        totalWrong: userData.totalWrong
-    });
-}
-
-document.getElementById('finish-game-btn').addEventListener('click', () => {
-    switchPage('menu');
+// Auto Check Login saat aplikasi dibuka
+auth.onAuthStateChanged(user => {
+    if (user) loadUserData(user);
+    else switchPage(pages.login);
 });
