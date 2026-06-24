@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Tebak Angka Multiplayer - Daus XD</title>
+    <title>Game Tebak Angka - Daus XD</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -17,26 +17,34 @@
         </div>
 
         <div id="main-page" class="card hidden">
-    <div class="user-bar" id="open-profile-btn">
-        <span id="nav-avatar">🎮</span>
-        <span id="nav-username">Loading...</span>
-    </div>
-    <h2>Menu Utama</h2>
-    <p class="watermark">by Daus XD</p>
-    
-    <div class="menu-buttons">
-        <div style="margin-bottom: 10px; color: #00f0ff; font-weight: bold; font-size: 14px; text-align: left;">[ MODE SINGLEPLAYER ]</div>
-        <button id="menu-single-btn" class="btn-primary">Main Sendiri (Singleplayer)</button>
-        
-        <div style="margin: 15px 0 10px 0; color: #ff007f; font-weight: bold; font-size: 14px; text-align: left;">[ MODE MULTIPLAYER ]</div>
-        <button id="menu-create-room-btn" class="btn-secondary" style="border-color: #ff007f;">Buat Room Baru</button>
-        <button id="menu-join-code-btn" class="btn-secondary">Masuk Pakai Kode</button>
-        <button id="menu-server-list-btn" class="btn-secondary">Lihat Daftar Server</button>
-        
-        <hr style="margin: 10px 0;">
-        <button id="logout-btn" class="btn-danger">Keluar (Logout)</button>
-    </div>
-</div>
+            <div class="user-bar" id="open-profile-btn">
+                <span id="nav-avatar">🎮</span>
+                <span id="nav-username">Loading...</span>
+            </div>
+            <h2>Menu Utama</h2>
+            <p class="watermark">by Daus XD</p>
+            
+            <div class="menu-buttons">
+                <button id="menu-single-btn" class="btn-primary">Mode Singleplayer</button>
+                <hr style="border-color: #252538; margin: 5px 0;">
+                <button id="menu-create-room-btn" class="btn-secondary" style="border-color: #7f00ff;">Buat Room Multiplayer</button>
+                <button id="menu-join-code-btn" class="btn-secondary">Masuk Pakai Kode</button>
+                <button id="menu-server-list-btn" class="btn-secondary">Daftar Server Aktif</button>
+                <button id="logout-btn" class="btn-danger" style="margin-top: 10px;">Keluar (Logout)</button>
+            </div>
+        </div>
+
+        <div id="setup-page" class="card hidden">
+            <h2 id="setup-title">Pengaturan Game</h2>
+            <p class="watermark">by Daus XD</p>
+            <div class="input-group">
+                <label for="max-number">Masukkan Maksimal Angka (Maks: 50):</label>
+                <input type="number" id="max-number" value="50" min="1" max="50">
+                <div id="setup-warning" class="warning-text"></div>
+            </div>
+            <button id="start-btn" disabled>Mulai Permainan</button>
+            <button id="back-to-main-1" class="btn-back">Kembali</button>
+        </div>
 
         <div id="lobby-page" class="card hidden">
             <h2 id="lobby-room-title">Lobby Room</h2>
@@ -48,15 +56,7 @@
             <hr>
             <h3>Daftar Pemain:</h3>
             <ul id="lobby-player-list"></ul>
-            <hr>
-            <div id="host-controls" class="hidden">
-                <div class="input-group">
-                    <label>Maksimal Angka Game (Maks 50):</label>
-                    <input type="number" id="mp-max-number" value="50" min="1" max="50">
-                </div>
-                <button id="mp-start-game-btn" class="btn-primary">Mulai Game (Min 2 Pemain)</button>
-            </div>
-            <p id="player-wait-msg" class="hidden" style="color: #ffcc00; margin-top: 10px;">Menunggu Host memulai game...</p>
+            <p id="player-wait-msg" class="hidden" style="color: #ffcc00; margin-top: 10px;">Menunggu Host menentukan maksimal angka...</p>
             <button id="leave-room-btn" class="btn-danger" style="margin-top: 15px;">Keluar Room</button>
         </div>
 
@@ -74,7 +74,7 @@
             <p id="clue">Tebak angka antara 1 sampai <span id="display-max">50</span></p>
             
             <div id="ingame-players-status"></div>
-            <hr>
+            <hr id="ingame-hr" class="hidden">
             
             <div class="input-group">
                 <input type="number" id="guess-input" placeholder="Ketik tebakanmu...">
@@ -88,8 +88,14 @@
             <h2>Game Selesai!</h2>
             <p class="watermark">by Daus XD</p>
             <hr>
-            <h3>Papan Skor Akhir:</h3>
-            <div id="final-scoreboard"></div>
+            <div id="single-result-box" class="stats hidden">
+                <p>Jawaban Benar: <span id="stat-correct" class="correct">0</span></p>
+                <p>Jawaban Salah: <span id="stat-wrong" class="wrong">0</span></p>
+            </div>
+            <div id="multi-result-box" class="hidden">
+                <h3>Papan Skor Akhir:</h3>
+                <div id="final-scoreboard"></div>
+            </div>
             <button id="back-to-menu-after-game-btn" class="btn-primary" style="margin-top: 20px;">Kembali ke Menu Utama</button>
         </div>
 
