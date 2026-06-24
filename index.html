@@ -17,19 +17,26 @@
         </div>
 
         <div id="main-page" class="card hidden">
-            <div class="user-bar" id="open-profile-btn">
-                <span id="nav-avatar">🎮</span>
-                <span id="nav-username">Loading...</span>
-            </div>
-            <h2>Menu Utama</h2>
-            <p class="watermark">by Daus XD</p>
-            <div class="menu-buttons">
-                <button id="menu-create-room-btn" class="btn-primary">Buat Room Baru</button>
-                <button id="menu-join-code-btn" class="btn-secondary">Masuk Pakai Kode</button>
-                <button id="menu-server-list-btn" class="btn-secondary">Lihat Daftar Server</button>
-                <button id="logout-btn" class="btn-danger">Keluar (Logout)</button>
-            </div>
-        </div>
+    <div class="user-bar" id="open-profile-btn">
+        <span id="nav-avatar">🎮</span>
+        <span id="nav-username">Loading...</span>
+    </div>
+    <h2>Menu Utama</h2>
+    <p class="watermark">by Daus XD</p>
+    
+    <div class="menu-buttons">
+        <div style="margin-bottom: 10px; color: #00f0ff; font-weight: bold; font-size: 14px; text-align: left;">[ MODE SINGLEPLAYER ]</div>
+        <button id="menu-single-btn" class="btn-primary">Main Sendiri (Singleplayer)</button>
+        
+        <div style="margin: 15px 0 10px 0; color: #ff007f; font-weight: bold; font-size: 14px; text-align: left;">[ MODE MULTIPLAYER ]</div>
+        <button id="menu-create-room-btn" class="btn-secondary" style="border-color: #ff007f;">Buat Room Baru</button>
+        <button id="menu-join-code-btn" class="btn-secondary">Masuk Pakai Kode</button>
+        <button id="menu-server-list-btn" class="btn-secondary">Lihat Daftar Server</button>
+        
+        <hr style="margin: 10px 0;">
+        <button id="logout-btn" class="btn-danger">Keluar (Logout)</button>
+    </div>
+</div>
 
         <div id="lobby-page" class="card hidden">
             <h2 id="lobby-room-title">Lobby Room</h2>
