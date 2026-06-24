@@ -170,3 +170,96 @@ hr { border: 1px solid #32325d; margin: 15px 0; }
     color: #aaa;
 }
 .close-modal:hover { color: #fff; }
+
+/* Gabungkan dengan style.css kamu sebelumnya, tambahkan bagian baru ini */
+
+.room-info-box {
+    background: #0f0f1a;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #32325d;
+}
+
+#lobby-player-list {
+    list-style: none;
+    text-align: left;
+    margin: 15px 0;
+}
+
+#lobby-player-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1f1f38;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border: 1px solid #32325d;
+}
+
+.btn-kick {
+    background: #ff3333;
+    padding: 4px 8px;
+    font-size: 11px;
+    width: auto;
+    border-radius: 4px;
+}
+
+/* Server List Grid */
+.server-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 250px;
+    overflow-y: auto;
+    margin: 15px 0;
+}
+
+.server-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1f1f38;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #32325d;
+}
+
+/* In-game Pemain Status Area */
+#ingame-players-status {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.player-status-card {
+    background: #0f0f1a;
+    border: 1px solid #32325d;
+    padding: 8px;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 80px;
+}
+
+.player-status-card .avatar {
+    font-size: 24px;
+    display: block;
+}
+
+.player-status-card .score {
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Scoreboard Hasil Akhir */
+.score-row {
+    display: flex;
+    justify-content: space-between;
+    background: #1f1f38;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 6px;
+}

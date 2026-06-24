@@ -3,57 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Tebak Angka - Daus XD</title>
+    <title>Game Tebak Angka Multiplayer - Daus XD</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="container">
-        <!-- HALAMAN 0: LOGIN -->
         <div id="login-page" class="card">
             <h2>Game Tebak Angka</h2>
             <p class="watermark">by Daus XD</p>
-            <p style="margin-bottom: 20px; color: #b3b3cc;">Silakan login terlebih dahulu untuk bermain dan mencatatkan skor di Leaderboard.</p>
             <button id="google-login-btn">Login dengan Google</button>
         </div>
 
-        <!-- HALAMAN 1: UTAMA (DASHBOARD) -->
         <div id="main-page" class="card hidden">
             <div class="user-bar" id="open-profile-btn">
                 <span id="nav-avatar">🎮</span>
                 <span id="nav-username">Loading...</span>
             </div>
-            
             <h2>Menu Utama</h2>
             <p class="watermark">by Daus XD</p>
-            
             <div class="menu-buttons">
-                <button id="menu-play-btn" class="btn-primary">Main Game</button>
-                <button id="menu-stats-btn" class="btn-secondary">Lihat Statistik</button>
-                <button id="menu-leaderboard-btn" class="btn-secondary">Leaderboard Global</button>
+                <button id="menu-create-room-btn" class="btn-primary">Buat Room Baru</button>
+                <button id="menu-join-code-btn" class="btn-secondary">Masuk Pakai Kode</button>
+                <button id="menu-server-list-btn" class="btn-secondary">Lihat Daftar Server</button>
                 <button id="logout-btn" class="btn-danger">Keluar (Logout)</button>
             </div>
         </div>
 
-        <!-- HALAMAN 2: INPUT MAKSIMAL ANGKA -->
-        <div id="setup-page" class="card hidden">
-            <h2>Pengaturan Game</h2>
+        <div id="lobby-page" class="card hidden">
+            <h2 id="lobby-room-title">Lobby Room</h2>
             <p class="watermark">by Daus XD</p>
-            <div class="input-group">
-                <label for="max-number">Masukkan Maksimal Angka (Maks: 50):</label>
-                <input type="number" id="max-number" placeholder="Contoh: 50" min="1">
-                <div id="setup-warning" class="warning-text"></div>
+            <div class="room-info-box">
+                <p>Kode Room: <span id="lobby-room-code" style="color: #00ffcc; font-weight: bold;">-</span></p>
+                <p>Kapasitas: <span id="lobby-room-slots">0/5</span></p>
             </div>
-            <button id="start-btn" disabled>Mulai Permainan</button>
-            <button id="back-to-main-1" class="btn-back">Kembali</button>
+            <hr>
+            <h3>Daftar Pemain:</h3>
+            <ul id="lobby-player-list"></ul>
+            <hr>
+            <div id="host-controls" class="hidden">
+                <div class="input-group">
+                    <label>Maksimal Angka Game (Maks 50):</label>
+                    <input type="number" id="mp-max-number" value="50" min="1" max="50">
+                </div>
+                <button id="mp-start-game-btn" class="btn-primary">Mulai Game (Min 2 Pemain)</button>
+            </div>
+            <p id="player-wait-msg" class="hidden" style="color: #ffcc00; margin-top: 10px;">Menunggu Host memulai game...</p>
+            <button id="leave-room-btn" class="btn-danger" style="margin-top: 15px;">Keluar Room</button>
         </div>
 
-        <!-- HALAMAN 3: AREA GAMEPLAY -->
+        <div id="server-list-page" class="card hidden">
+            <h2>Daftar Server Aktif</h2>
+            <p class="watermark">by Daus XD</p>
+            <hr>
+            <div id="server-container" class="server-grid"></div>
+            <button id="back-from-server-btn" class="btn-back">Kembali</button>
+        </div>
+
         <div id="game-page" class="card hidden">
             <h2>Tebak Angkanya!</h2>
             <div class="timer-box">Sisa Waktu: <span id="timer">02:00</span></div>
             <p id="clue">Tebak angka antara 1 sampai <span id="display-max">50</span></p>
+            
+            <div id="ingame-players-status"></div>
+            <hr>
+            
             <div class="input-group">
                 <input type="number" id="guess-input" placeholder="Ketik tebakanmu...">
                 <div id="game-warning" class="warning-text"></div>
@@ -62,40 +77,26 @@
             <p id="feedback"></p>
         </div>
 
-        <!-- HALAMAN 4: HASIL GAMEPLAY SESUAI TIMER -->
         <div id="result-page" class="card hidden">
-            <h2>Permainan Selesai!</h2>
+            <h2>Game Selesai!</h2>
             <p class="watermark">by Daus XD</p>
             <hr>
-            <div class="stats">
-                <p>Sesi Ini Benar: <span id="stat-correct" class="correct">0</span></p>
-                <p>Sesi Ini Salah: <span id="stat-wrong" class="wrong">0</span></p>
+            <h3>Papan Skor Akhir:</h3>
+            <div id="final-scoreboard"></div>
+            <button id="back-to-menu-after-game-btn" class="btn-primary" style="margin-top: 20px;">Kembali ke Menu Utama</button>
+        </div>
+
+        <div id="join-code-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal" id="close-join-modal">&times;</span>
+                <h3>Masuk Menggunakan Kode</h3>
+                <div class="input-group" style="margin-top: 15px;">
+                    <input type="text" id="join-room-code-input" placeholder="Ketik Kode Room...">
+                </div>
+                <button id="submit-join-code-btn">Masuk Ke Lobby</button>
             </div>
-            <button id="restart-btn">Kembali ke Menu Utama</button>
         </div>
 
-        <!-- HALAMAN 5: STATISTIK TOTAL USER -->
-        <div id="stats-page" class="card hidden">
-            <h2>Statistik Akumulasi</h2>
-            <p class="watermark">by Daus XD</p>
-            <hr>
-            <div class="stats">
-                <p>Total Jawaban Benar: <span id="total-correct" class="correct">0</span></p>
-                <p>Total Jawaban Salah: <span id="total-wrong" class="wrong">0</span></p>
-            </div>
-            <button id="back-to-main-2" class="btn-back">Kembali</button>
-        </div>
-
-        <!-- HALAMAN 6: LEADERBOARD GLOBAL -->
-        <div id="leaderboard-page" class="card hidden">
-            <h2>Top 10 Besar Global</h2>
-            <p class="watermark">by Daus XD</p>
-            <hr>
-            <ol id="leaderboard-list"></ol>
-            <button id="back-to-main-3" class="btn-back">Kembali</button>
-        </div>
-
-        <!-- ================= MODAL / POP UP REGISTER USER BARU ================= -->
         <div id="register-modal" class="modal hidden">
             <div class="modal-content">
                 <h3>Lengkapi Profil Pemain</h3>
@@ -104,37 +105,14 @@
                     <input type="text" id="reg-username" placeholder="Masukkan nama...">
                 </div>
                 <div class="input-group">
-                    <label>Foto Profil (Ketik 1 Emoji saja):</label>
+                    <label>Foto Profil (1 Emoji):</label>
                     <input type="text" id="reg-avatar" placeholder="Contoh: 🔥" maxlength="2">
                 </div>
-                <button id="save-reg-btn">Simpan Profil & Masuk</button>
-            </div>
-        </div>
-
-        <!-- ================= MODAL / POP UP PROFIL USER & EDIT / DELETE ================= -->
-        <div id="profile-modal" class="modal hidden">
-            <div class="modal-content">
-                <span class="close-modal" id="close-profile-btn">&times;</span>
-                <h3>Profil Pengguna</h3>
-                <div class="profile-display">
-                    <span id="profile-avatar-view" style="font-size: 50px;">🎮</span>
-                    <h4 id="profile-name-view" style="margin-top: 10px; color: #00f0ff;">Nama</h4>
-                </div>
-                <hr>
-                <h4>Edit Profil</h4>
-                <div class="input-group">
-                    <input type="text" id="edit-username" placeholder="Ubah nama...">
-                </div>
-                <div class="input-group">
-                    <input type="text" id="edit-avatar" placeholder="Ubah emoji avatar..." maxlength="2">
-                </div>
-                <button id="save-edit-btn" style="margin-bottom: 15px;">Simpan Perubahan</button>
-                <button id="delete-data-btn" class="btn-danger">Hapus Akun & Data Permanen</button>
+                <button id="save-reg-btn">Simpan Profil</button>
             </div>
         </div>
     </div>
 
-    <!-- Firebase App dan SDK Services lewat CDN resmi -->
     <script type="module" src="script.js"></script>
 </body>
 </html>
