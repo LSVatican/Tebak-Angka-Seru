@@ -1,0 +1,190 @@
+* {
+    box-shadow: border-box;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #0f0f1a;
+    color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.card {
+    background: #16162a;
+    border: 2px solid #32325d;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.card:hover {
+    border-color: #ff007f;
+    box-shadow: 0 0 20px rgba(255, 0, 127, 0.3);
+}
+
+h2, h3 {
+    margin-bottom: 5px;
+    color: #00f0ff;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.watermark {
+    font-size: 12px;
+    color: #ff00ea;
+    margin-bottom: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-shadow: 0 0 5px rgba(255, 0, 234, 0.5);
+}
+
+/* Profil Trigger di Atas Menu Utama */
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    background: #252538;
+    border: 1px solid #ff007f;
+    padding: 8px 12px;
+    border-radius: 20px;
+    width: fit-content;
+    margin: 0 auto 20px auto;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.profile-trigger:hover {
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.6);
+}
+
+.profile-trigger span {
+    margin: 0 5px;
+}
+
+/* Form & Inputs */
+.input-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 5px;
+    color: #b3b3cc;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    background: #0f0f1a;
+    border: 2px solid #32325d;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #00ffcc;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+}
+
+.warning-text {
+    color: #ff3333;
+    font-size: 12px;
+    margin-top: 5px;
+    min-height: 18px;
+    font-weight: bold;
+}
+
+/* Buttons System */
+button {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+button:disabled {
+    background: #252538 !important;
+    color: #555577 !important;
+    cursor: not-allowed;
+    border: 1px solid #32325d;
+}
+
+.btn-primary { background: linear-gradient(45deg, #ff007f, #7f00ff); }
+.btn-secondary { background: #32325d; border: 1px solid #00f0ff; }
+.btn-secondary:hover { background: #44447a; }
+.btn-danger { background: #aa2244; }
+.btn-danger:hover { background: #cc3355; }
+.btn-back { background: #444; }
+
+/* Gameplay Component */
+.timer-box {
+    font-size: 22px;
+    font-weight: bold;
+    color: #ffcc00;
+    margin-bottom: 15px;
+}
+
+#feedback { margin-top: 15px; font-weight: bold; }
+.correct { color: #00ffcc; }
+.wrong { color: #ff3366; }
+
+/* Pop-Up Overlay Modern */
+.popup-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.popup-content {
+    background: #1a1a36;
+    border: 2px solid #ff00ea;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 350px;
+    text-align: center;
+}
+
+/* Leaderboard List */
+#leaderboard-list {
+    text-align: left;
+    padding-left: 20px;
+    margin-bottom: 20px;
+}
+
+#leaderboard-list li {
+    margin: 10px 0;
+    font-size: 16px;
+    color: #e0e0ff;
+}
+
+.hidden { display: none !important; }
+hr { border: 1px solid #32325d; margin: 15px 0; }

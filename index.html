@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Tebak Angka - Daus XD</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- HALAMAN 0:  GOOGLE -->
+        <div id="-page" class="card">
+            <h2>Game Tebak Angka</h2>
+            <p class="watermark">by Daus XD</p>
+            <p style="margin-bottom: 20px; color: #b3b3cc;">Silakan  terlebih dahulu untuk bermain dan masuk leaderboard.</p>
+            <button id="-google-btn"> dengan Google</button>
+        </div>
+
+        <!-- HALAMAN 1: HALAMAN UTAMA (MENU) -->
+        <div id="main-menu-page" class="card hidden">
+            <div class="profile-trigger" id="open-profile-btn">
+                <span id="menu-user-emoji">👤</span>
+                <span id="menu-user-name">Loading...</span>
+            </div>
+            
+            <h2>Menu Utama</h2>
+            <p class="watermark">by Daus XD</p>
+
+            <div class="menu-buttons">
+                <button id="menu-start-btn" class="btn-primary">Mulai Bermainan</button>
+                <button id="menu-stats-btn" class="btn-secondary">Lihat Statistik Anda</button>
+                <button id="menu-leaderboard-btn" class="btn-secondary">Leaderboard Global</button>
+                <button id="logout-btn" class="btn-danger">Logout</button>
+            </div>
+        </div>
+
+        <!-- HALAMAN 2: INPUT MAKSIMAL ANGKA -->
+        <div id="setup-page" class="card hidden">
+            <h2>Pengaturan Angka</h2>
+            <p class="watermark">by Daus XD</p>
+            <div class="input-group">
+                <label for="max-number">Masukkan Maksimal Angka (Maks: 50):</label>
+                <input type="number" id="max-number" placeholder="Contoh: 50" min="1">
+                <div id="setup-warning" class="warning-text"></div>
+            </div>
+            <button id="start-game-btn" disabled>Mulai Game</button>
+            <button id="back-to-menu-1" class="btn-back">Kembali</button>
+        </div>
+
+        <!-- HALAMAN 3: AREA GAMEPLAY -->
+        <div id="game-page" class="card hidden">
+            <h2>Tebak Angkanya!</h2>
+            <div class="timer-box">Sisa Waktu: <span id="timer">02:00</span></div>
+            <p id="clue">Tebak angka antara 1 sampai <span id="display-max">50</span></p>
+            
+            <div class="input-group">
+                <input type="number" id="guess-input" placeholder="Ketik tebakanmu...">
+                <div id="game-warning" class="warning-text"></div>
+            </div>
+            
+            <button id="guess-btn">Tebak!</button>
+            <p id="feedback"></p>
+        </div>
+
+        <!-- HALAMAN 4: HASIL SETELAH GAME SELESAI -->
+        <div id="game-result-page" class="card hidden">
+            <h2>Permainan Selesai!</h2>
+            <p class="watermark">by Daus XD</p>
+            <hr>
+            <div class="stats">
+                <p>Jawaban Benar Sesi Ini: <span id="session-correct" class="correct">0</span></p>
+                <p>Jawaban Salah Sesi Ini: <span id="session-wrong" class="wrong">0</span></p>
+            </div>
+            <button id="finish-game-btn">Kembali ke Menu</button>
+        </div>
+
+        <!-- HALAMAN 5: STATISTIK AKUMULASI PENGGUNA -->
+        <div id="stats-page" class="card hidden">
+            <h2>Statistik Anda</h2>
+            <p class="watermark">by Daus XD</p>
+            <hr>
+            <div class="stats">
+                <p>Total Jawaban Benar: <span id="total-correct" class="correct">0</span></p>
+                <p>Total Jawaban Salah: <span id="total-wrong" class="wrong">0</span></p>
+            </div>
+            <button id="back-to-menu-2" class="btn-back">Kembali ke Menu</button>
+        </div>
+
+        <!-- HALAMAN 6: LEADERBOARD GLOBAL -->
+        <div id="leaderboard-page" class="card hidden">
+            <h2>Top 10 Besar Global</h2>
+            <p class="watermark">by Daus XD</p>
+            <hr>
+            <ol id="leaderboard-list"></ol>
+            <button id="back-to-menu-3" class="btn-back">Kembali ke Menu</button>
+        </div>
+
+        <!-- POP UP 1: REGISTRASI PENGGUNA BARU / EDIT PROFIL -->
+        <div id="profile-popup" class="popup-overlay hidden">
+            <div class="popup-content">
+                <h3 id="popup-title">Profil Pengguna</h3>
+                <div class="input-group">
+                    <label for="profile-name">Nama Pemain:</label>
+                    <input type="text" id="profile-name" placeholder="Nama kamu...">
+                </div>
+                <div class="input-group">
+                    <label for="profile-emoji">Foto Profil (Hanya Ketik 1 Emoji):</label>
+                    <input type="text" id="profile-emoji" placeholder="Contoh: 🔥" maxlength="2">
+                </div>
+                <div id="profile-warning" class="warning-text"></div>
+                <button id="save-profile-btn">Simpan Data</button>
+                <button id="close-profile-btn" class="btn-danger hidden">Tutup</button>
+                <hr id="danger-zone-hr" class="hidden">
+                <button id="delete-data-btn" class="btn-danger hidden">Hapus Semua Data & Akun</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK Modules via CDN -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
