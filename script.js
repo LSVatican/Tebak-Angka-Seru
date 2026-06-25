@@ -19,7 +19,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// State System (Mendukung Pemulihan Refresh)
+// State System
 let currentUser = null;
 let userData = { username: "", avatar: "", totalCorrect: 0, totalWrong: 0 };
 let currentRoomCode = localStorage.getItem("currentRoomCode") || null;
@@ -34,6 +34,10 @@ let timeLeft = parseInt(localStorage.getItem("timeLeft")) || 120;
 let timerInterval;
 let localCorrect = parseInt(localStorage.getItem("localCorrect")) || 0;
 let localWrong = parseInt(localStorage.getItem("localWrong")) || 0;
+
+// Turn Management State
+let playerOrder = [];
+let currentTurnPlayerId = null;
 
 const pages = {
     login: document.getElementById('login-page'),
@@ -52,7 +56,6 @@ function switchPage(targetPage) {
     targetPage.classList.remove('hidden');
 }
 
-// Save Game State Ke LocalStorage agar tidak hilang saat Refresh
 function saveStateToLocalStorage() {
     localStorage.setItem("currentRoomCode", currentRoomCode || "");
     localStorage.setItem("isMultiplayer", isMultiplayer);
@@ -64,7 +67,6 @@ function saveStateToLocalStorage() {
     localStorage.setItem("localWrong", localWrong);
 }
 
-// Clear State LocalStorage saat keluar game/selesai
 function clearGameStateStorage() {
     localStorage.removeItem("currentRoomCode");
     localStorage.removeItem("isMultiplayer");
@@ -76,9 +78,10 @@ function clearGameStateStorage() {
     localStorage.removeItem("localWrong");
     currentRoomCode = null; isMultiplayer = false; isHost = false;
     localCorrect = 0; localWrong = 0; timeLeft = 120;
+    playerOrder = []; currentTurnPlayerId = null;
 }
 
-// ================= SYNC AUTH & RESTORE AFTER REFRESH =================
+// ================= SYNC AUTH & RESTORE =================
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
@@ -98,12 +101,10 @@ async function loadUserData(user) {
         userData = docSnap.data();
         updateUserUI();
         
-        // CEK PEMULIHAN REFRESH BROWSER
         const savedPageState = localStorage.getItem("currentRoomCode");
         const wasInGame = parseInt(localStorage.getItem("timeLeft")) > 0 && parseInt(localStorage.getItem("timeLeft")) < 120;
 
         if (isMultiplayer && savedPageState) {
-            // Jika sebelumnya di room lobby atau game multiplayer
             listenToRoom(currentRoomCode);
             if (wasInGame) {
                 setupGameArenaUI(true);
@@ -112,7 +113,6 @@ async function loadUserData(user) {
                 switchPage(pages.lobby);
             }
         } else if (!isMultiplayer && wasInGame) {
-            // Jika sebelumnya sedang bermain singleplayer
             setupGameArenaUI(false);
             resumeTimer(false);
         } else {
@@ -132,7 +132,6 @@ function updateUserUI() {
     document.getElementById('edit-avatar').value = userData.avatar;
 }
 
-// Registrasi User Baru
 document.getElementById('save-reg-btn').addEventListener('click', async () => {
     const name = document.getElementById('reg-username').value.trim();
     const av = document.getElementById('reg-avatar').value.trim();
@@ -243,9 +242,12 @@ startBtn.addEventListener('click', async () => {
         currentRoomCode = code;
         saveStateToLocalStorage();
 
+        // Host otomatis didaftarkan sebagai index pertama giliran permainan
         const roomData = {
             roomCode: code, hostId: currentUser.uid, hostName: userData.username, status: "waiting", maxNumber: maxNumber,
             secretNumber: Math.floor(Math.random() * maxNumber) + 1,
+            currentTurn: currentUser.uid,
+            playerOrder: [currentUser.uid],
             players: { [currentUser.uid]: { name: userData.username, avatar: userData.avatar, correct: 0, wrong: 0, isHost: true } }
         };
 
@@ -275,7 +277,6 @@ function setupGameArenaUI(multiMode) {
     switchPage(pages.game);
 }
 
-// Timer yang aman dan melanjutkan sisa detik saat refresh browser
 function resumeTimer(multiMode) {
     clearInterval(timerInterval);
     timerInterval = setInterval(async () => {
@@ -312,15 +313,18 @@ function listenToRoom(code) {
 
     roomListener = onSnapshot(doc(db, "rooms", code), async (docSnap) => {
         if (!docSnap.exists()) { 
-            // Jika room sudah dihapus/bubar saat ditinggalkan
             if(!pages.main.classList.contains('hidden')) return;
-            alert("Room telah dibubarkan."); 
             exitRoomCleanup(); 
             return; 
         }
         const roomData = docSnap.data();
 
-        if (!roomData.players[currentUser.uid]) { alert("Kamu telah dikick."); exitRoomCleanup(); return; }
+        // NOTIFIKASI JIKA PEMAIN DIKICK
+        if (!roomData.players[currentUser.uid]) { 
+            alert("🚨 Kamu telah dikeluarkan (kick) dari room oleh Host."); 
+            exitRoomCleanup(); 
+            return; 
+        }
 
         document.getElementById('lobby-room-title').innerText = `Room milik ${roomData.hostName}`;
         document.getElementById('lobby-room-code').innerText = roomData.roomCode;
@@ -339,20 +343,30 @@ function listenToRoom(code) {
         const waitMsg = document.getElementById('player-wait-msg');
         
         if(isHost) {
-            // Pasang event listener untuk tombol kick milik host
             document.querySelectorAll('.btn-kick').forEach(btn => {
-                btn.addEventListener('click', (e) => kickPlayer(e.target.getAttribute('data-id')));
+                btn.addEventListener('click', (e) => {
+                    const targetId = e.target.getAttribute('data-id');
+                    const targetName = roomData.players[targetId].name;
+                    // KONFIRMASI KICK PEMAIN
+                    if(confirm(`Apakah Anda yakin ingin menendang "${targetName}" keluar dari room?`)) {
+                        kickPlayer(targetId);
+                    }
+                });
             });
 
-            // TOMBOL MULAI MANUAL BAGI HOST JIKA PEMAIN MINIMAL 2
             if(playersList.length >= 2 && roomData.status === "waiting") {
-                waitMsg.innerHTML = `<button id="host-trigger-start-btn" class="btn-primary" style="background:#00ffcc; color:#000;">Mulai Permainan Multiplayer Sekarang</button>`;
+                waitMsg.innerHTML = `<button id="host-trigger-start-btn" class="btn-primary" style="background:#00ffcc; color:#000;">Mulai Permainan Sekarang</button>`;
                 waitMsg.classList.remove('hidden');
                 
-                // SISTEM KONFIRMASI SEBELUM MULAI MULTIPLAYER
                 document.getElementById('host-trigger-start-btn').onclick = async () => {
-                    if(confirm("Apakah Anda yakin ingin memulai permainan multiplayer sekarang?")) {
-                        await updateDoc(doc(db, "rooms", currentRoomCode), { status: "playing" });
+                    if(confirm("Apakah Anda yakin ingin memulai permainan bergiliran sekarang?")) {
+                        // Daftarkan urutan bermain secara rapi mulai dari Host ke pemain lain
+                        let order = [roomData.hostId, ...playersList.filter(id => id !== roomData.hostId)];
+                        await updateDoc(doc(db, "rooms", currentRoomCode), { 
+                            status: "playing",
+                            playerOrder: order,
+                            currentTurn: order[0]
+                        });
                     }
                 };
             } else if (playersList.length < 2) {
@@ -366,14 +380,22 @@ function listenToRoom(code) {
             }
         }
 
-        // Transisi masuk arena game
-        if (roomData.status === "playing" && pages.game.classList.contains('hidden')) {
-            maxNumber = roomData.maxNumber; secretNumber = roomData.secretNumber;
-            saveStateToLocalStorage();
-            setupGameArenaUI(true); resumeTimer(true);
-        }
+        // Sinkronisasi Turn State saat permainan berlangsung
+        if (roomData.status === "playing") {
+            playerOrder = roomData.playerOrder || [];
+            currentTurnPlayerId = roomData.currentTurn;
+            secretNumber = roomData.secretNumber;
+            maxNumber = roomData.maxNumber;
 
-        if (roomData.status === "playing") renderInGameStatus(roomData.players);
+            if(pages.game.classList.contains('hidden')) {
+                saveStateToLocalStorage();
+                setupGameArenaUI(true); 
+                resumeTimer(true);
+            }
+
+            renderInGameStatus(roomData.players);
+            updateTurnInputUI();
+        }
 
         if (roomData.status === "finished") {
             const myFinalScore = roomData.players[currentUser.uid];
@@ -390,12 +412,37 @@ function listenToRoom(code) {
     });
 }
 
+// Logic Membatasi Input Berdasarkan Giliran Aktif
+function updateTurnInputUI() {
+    if (!isMultiplayer) return;
+    const guessBtn = document.getElementById('guess-btn');
+    const inputEl = document.getElementById('guess-input');
+    const feedback = document.getElementById('feedback');
+
+    if (currentTurnPlayerId === currentUser.uid) {
+        inputEl.disabled = false;
+        guessBtn.disabled = false;
+        inputEl.placeholder = "Giliranmu! Masukkan tebakan...";
+    } else {
+        inputEl.disabled = true;
+        guessBtn.disabled = true;
+        inputEl.placeholder = "Menunggu giliran pemain lain...";
+    }
+}
+
 async function kickPlayer(playerId) {
     const roomRef = doc(db, "rooms", currentRoomCode);
     const roomSnap = await getDoc(roomRef);
     if(roomSnap.exists()) {
-        const data = roomSnap.data(); delete data.players[playerId];
-        await updateDoc(roomRef, { players: data.players });
+        const data = roomSnap.data(); 
+        delete data.players[playerId];
+        let newOrder = (data.playerOrder || []).filter(id => id !== playerId);
+        
+        let updateData = { players: data.players, playerOrder: newOrder };
+        if(data.currentTurn === playerId) {
+            updateData.currentTurn = data.hostId; // kembalikan ke host jika yang dikick sedang jalan
+        }
+        await updateDoc(roomRef, updateData);
     }
 }
 
@@ -407,8 +454,18 @@ async function leaveRoomAction() {
         await runTransaction(db, async (transaction) => {
             const roomSnap = await transaction.get(roomRef); if (!roomSnap.exists()) return;
             const roomData = roomSnap.data(); delete roomData.players[currentUser.uid];
-            if (Object.keys(roomData.players).length === 0) { transaction.delete(roomRef); } 
-            else { transaction.update(roomRef, { players: roomData.players }); }
+            let newOrder = (roomData.playerOrder || []).filter(id => id !== currentUser.uid);
+
+            if (Object.keys(roomData.players).length === 0) { 
+                transaction.delete(roomRef); 
+            } else { 
+                let updates = { players: roomData.players, playerOrder: newOrder };
+                if (roomData.currentTurn === currentUser.uid) {
+                    let nextIdx = ((roomData.playerOrder.indexOf(currentUser.uid) + 1) % roomData.playerOrder.length);
+                    updates.currentTurn = roomData.playerOrder[nextIdx] === currentUser.uid ? roomData.hostId : roomData.playerOrder[nextIdx];
+                }
+                transaction.update(roomRef, updates); 
+            }
         });
     } catch (e) { console.error(e); }
     exitRoomCleanup();
@@ -422,26 +479,48 @@ function exitRoomCleanup() {
 }
 
 
-// ================= ACTIONS GUESS ENGINE =================
+// ================= ACTIONS GUESS ENGINE (TURN BASED) =================
 document.getElementById('guess-btn').addEventListener('click', async () => {
     const inputEl = document.getElementById('guess-input'); const userGuess = parseInt(inputEl.value);
     const feedback = document.getElementById('feedback'); if (isNaN(userGuess) || inputEl.value === "") return;
 
+    // Tentukan indeks giliran selanjutnya (Over 1 giliran per jawaban)
+    let nextPlayerId = currentUser.uid;
+    if (isMultiplayer && playerOrder.length > 0) {
+        let currentIdx = playerOrder.indexOf(currentUser.uid);
+        let nextIdx = (currentIdx + 1) % playerOrder.length;
+        nextPlayerId = playerOrder[nextIdx];
+    }
+
     if (userGuess === secretNumber) {
-        localCorrect++; feedback.innerText = "🎉 Benar! Angka diacak kembali!"; feedback.style.color = "#00ffcc";
+        localCorrect++; 
+        feedback.innerText = "🎉 Benar! Angka diacak kembali!"; 
+        feedback.style.color = "#00ffcc";
         saveStateToLocalStorage();
-        if (!isMultiplayer) { secretNumber = Math.floor(Math.random() * maxNumber) + 1; saveStateToLocalStorage(); } 
-        else {
+
+        if (!isMultiplayer) { 
+            secretNumber = Math.floor(Math.random() * maxNumber) + 1; 
+            saveStateToLocalStorage(); 
+        } else {
             const newSecret = Math.floor(Math.random() * maxNumber) + 1;
-            const payload = { [`players.${currentUser.uid}.correct`]: localCorrect };
-            if(isHost) payload.secretNumber = newSecret;
-            await updateDoc(doc(db, "rooms", currentRoomCode), payload);
+            await updateDoc(doc(db, "rooms", currentRoomCode), { 
+                [`players.${currentUser.uid}.correct`]: localCorrect,
+                secretNumber: newSecret,
+                currentTurn: nextPlayerId
+            });
         }
     } else {
-        localWrong++; feedback.innerText = userGuess < secretNumber ? "❌ Terlalu KECIL!" : "❌ Terlalu BESAR!";
+        localWrong++; 
+        feedback.innerText = userGuess < secretNumber ? "❌ Terlalu KECIL!" : "❌ Terlalu BESAR!";
         feedback.style.color = "#ff3366";
         saveStateToLocalStorage();
-        if(isMultiplayer) await updateDoc(doc(db, "rooms", currentRoomCode), { [`players.${currentUser.uid}.wrong`]: localWrong });
+
+        if (isMultiplayer) {
+            await updateDoc(doc(db, "rooms", currentRoomCode), { 
+                [`players.${currentUser.uid}.wrong`]: localWrong,
+                currentTurn: nextPlayerId
+            });
+        }
     }
     inputEl.value = ""; inputEl.focus();
 });
@@ -451,16 +530,15 @@ onSnapshot(doc(db, "rooms", currentRoomCode || "dummy"), (snap) => {
         const data = snap.data();
         if(data.status === "playing" && data.secretNumber !== secretNumber) {
             secretNumber = data.secretNumber; saveStateToLocalStorage();
-            document.getElementById('feedback').innerText = "🔄 Angka diacak ulang oleh host!";
+            document.getElementById('feedback').innerText = "🔄 Angka berhasil ditebak! Angka diacak ulang!";
             document.getElementById('feedback').style.color = "#00f0ff";
         }
     }
 });
 
 
-// ================= TOMBOL BERHENTI BERMAIN (DI SEMUA MODE) =================
+// ================= TOMBOL BERHENTI BERMAIN =================
 document.getElementById('stop-game-btn').addEventListener('click', async () => {
-    // SISTEM KONFIRMASI BERHENTI BERMAIN
     if (confirm("Apakah Anda yakin ingin berhenti bermain? Skor sesi ini tidak akan diakumulasikan.")) {
         if (isMultiplayer) {
             await leaveRoomAction();
@@ -521,6 +599,7 @@ async function joinRoomAction(code) {
             const roomSnap = await transaction.get(roomRef); if (!roomSnap.exists()) throw "Room tidak ditemukan!";
             const roomData = roomSnap.data(); if (roomData.status !== "waiting") throw "Game sudah berjalan!";
             if (Object.keys(roomData.players).length >= 5) throw "Room Penuh!";
+            
             roomData.players[currentUser.uid] = { name: userData.username, avatar: userData.avatar, correct: 0, wrong: 0, isHost: false };
             transaction.update(roomRef, { players: roomData.players });
         });
@@ -536,11 +615,21 @@ document.getElementById('submit-join-code-btn').addEventListener('click', () => 
     const code = document.getElementById('join-room-code-input').value.trim(); if(code) joinRoomAction(code);
 });
 
+// MENYEMBUNYIKAN JUMLAH SKOR BENAR/SALAH SAAT LIVE MULTIPLAYER
 function renderInGameStatus(playersData) {
     const container = document.getElementById('ingame-players-status'); container.innerHTML = "";
     Object.keys(playersData).forEach(pId => {
         const p = playersData[pId];
-        container.innerHTML += `<div class="player-status-card" style="${pId === currentUser.uid ? 'border-color:#00ffcc;':''}"><span class="avatar">${p.avatar}</span><small>${p.name}</small><div class="score"><span class="correct">${p.correct}</span> / <span class="wrong">${p.wrong}</span></div></div>`;
+        const isCurrentTurn = (pId === currentTurnPlayerId);
+        
+        container.innerHTML += `
+            <div class="player-status-card" style="${pId === currentUser.uid ? 'border-color:#00e5ff;' : ''} ${isCurrentTurn ? 'box-shadow: 0 0 12px #9d4edd; border-color:#9d4edd;' : ''}">
+                <span class="avatar">${p.avatar}</span>
+                <small>${p.name} ${p.isHost ? '👑' : ''}</small>
+                <div class="score" style="margin-top: 5px; font-size: 12px; color: ${isCurrentTurn ? '#9d4edd' : '#a0a0c0'};">
+                    ${isCurrentTurn ? '● SEDANG BERMAIN' : 'MENUNGGU'}
+                </div>
+            </div>`;
     });
 }
 
