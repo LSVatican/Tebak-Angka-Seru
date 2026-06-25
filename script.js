@@ -35,8 +35,7 @@ let timerInterval;
 let localCorrect = parseInt(localStorage.getItem("localCorrect")) || 0;
 let localWrong = parseInt(localStorage.getItem("localWrong")) || 0;
 
-// Turn Management State
-let playerOrder = [];
+// Turn System State
 let currentTurnPlayerId = null;
 
 const pages = {
@@ -77,11 +76,10 @@ function clearGameStateStorage() {
     localStorage.removeItem("localCorrect");
     localStorage.removeItem("localWrong");
     currentRoomCode = null; isMultiplayer = false; isHost = false;
-    localCorrect = 0; localWrong = 0; timeLeft = 120;
-    playerOrder = []; currentTurnPlayerId = null;
+    localCorrect = 0; localWrong = 0; timeLeft = 120; currentTurnPlayerId = null;
 }
 
-// ================= SYNC AUTH & RESTORE =================
+// ================= SYNC AUTH & RESTORE AFTER REFRESH =================
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
@@ -132,6 +130,7 @@ function updateUserUI() {
     document.getElementById('edit-avatar').value = userData.avatar;
 }
 
+// Registrasi User Baru
 document.getElementById('save-reg-btn').addEventListener('click', async () => {
     const name = document.getElementById('reg-username').value.trim();
     const av = document.getElementById('reg-avatar').value.trim();
@@ -242,12 +241,11 @@ startBtn.addEventListener('click', async () => {
         currentRoomCode = code;
         saveStateToLocalStorage();
 
-        // Host otomatis didaftarkan sebagai index pertama giliran permainan
         const roomData = {
             roomCode: code, hostId: currentUser.uid, hostName: userData.username, status: "waiting", maxNumber: maxNumber,
             secretNumber: Math.floor(Math.random() * maxNumber) + 1,
-            currentTurn: currentUser.uid,
-            playerOrder: [currentUser.uid],
+            currentTurn: currentUser.uid, // Host mulai duluan
+            turnOrder: [currentUser.uid],  // Daftar antrean giliran
             players: { [currentUser.uid]: { name: userData.username, avatar: userData.avatar, correct: 0, wrong: 0, isHost: true } }
         };
 
@@ -300,6 +298,7 @@ function resumeTimer(multiMode) {
                 clearGameStateStorage();
                 switchPage(pages.result);
             } else if (multiMode && isHost) {
+                // Selesai otomatis saat waktu habis (skor dihitung berdasarkan data akhir yang tersimpan)
                 await updateDoc(doc(db, "rooms", currentRoomCode), { status: "finished" });
             }
         }
@@ -319,7 +318,7 @@ function listenToRoom(code) {
         }
         const roomData = docSnap.data();
 
-        // NOTIFIKASI JIKA PEMAIN DIKICK
+        // NOTIFIKASI JIKA PEMAIN DI-KICK
         if (!roomData.players[currentUser.uid]) { 
             alert("🚨 Kamu telah dikeluarkan (kick) dari room oleh Host."); 
             exitRoomCleanup(); 
@@ -344,14 +343,7 @@ function listenToRoom(code) {
         
         if(isHost) {
             document.querySelectorAll('.btn-kick').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const targetId = e.target.getAttribute('data-id');
-                    const targetName = roomData.players[targetId].name;
-                    // KONFIRMASI KICK PEMAIN
-                    if(confirm(`Apakah Anda yakin ingin menendang "${targetName}" keluar dari room?`)) {
-                        kickPlayer(targetId);
-                    }
-                });
+                btn.addEventListener('click', (e) => kickPlayer(e.target.getAttribute('data-id')));
             });
 
             if(playersList.length >= 2 && roomData.status === "waiting") {
@@ -360,11 +352,11 @@ function listenToRoom(code) {
                 
                 document.getElementById('host-trigger-start-btn').onclick = async () => {
                     if(confirm("Apakah Anda yakin ingin memulai permainan bergiliran sekarang?")) {
-                        // Daftarkan urutan bermain secara rapi mulai dari Host ke pemain lain
+                        // Daftarkan turn order: Host duluan, diikuti pemain lain secara berurutan
                         let order = [roomData.hostId, ...playersList.filter(id => id !== roomData.hostId)];
                         await updateDoc(doc(db, "rooms", currentRoomCode), { 
                             status: "playing",
-                            playerOrder: order,
+                            turnOrder: order,
                             currentTurn: order[0]
                         });
                     }
@@ -380,21 +372,16 @@ function listenToRoom(code) {
             }
         }
 
-        // Sinkronisasi Turn State saat permainan berlangsung
+        // Transisi masuk arena game
+        if (roomData.status === "playing" && pages.game.classList.contains('hidden')) {
+            maxNumber = roomData.maxNumber; secretNumber = roomData.secretNumber;
+            saveStateToLocalStorage();
+            setupGameArenaUI(true); resumeTimer(true);
+        }
+
         if (roomData.status === "playing") {
-            playerOrder = roomData.playerOrder || [];
             currentTurnPlayerId = roomData.currentTurn;
-            secretNumber = roomData.secretNumber;
-            maxNumber = roomData.maxNumber;
-
-            if(pages.game.classList.contains('hidden')) {
-                saveStateToLocalStorage();
-                setupGameArenaUI(true); 
-                resumeTimer(true);
-            }
-
-            renderInGameStatus(roomData.players);
-            updateTurnInputUI();
+            renderInGameStatus(roomData.players, roomData.currentTurn, roomData.turnOrder);
         }
 
         if (roomData.status === "finished") {
@@ -412,37 +399,18 @@ function listenToRoom(code) {
     });
 }
 
-// Logic Membatasi Input Berdasarkan Giliran Aktif
-function updateTurnInputUI() {
-    if (!isMultiplayer) return;
-    const guessBtn = document.getElementById('guess-btn');
-    const inputEl = document.getElementById('guess-input');
-    const feedback = document.getElementById('feedback');
-
-    if (currentTurnPlayerId === currentUser.uid) {
-        inputEl.disabled = false;
-        guessBtn.disabled = false;
-        inputEl.placeholder = "Giliranmu! Masukkan tebakan...";
-    } else {
-        inputEl.disabled = true;
-        guessBtn.disabled = true;
-        inputEl.placeholder = "Menunggu giliran pemain lain...";
-    }
-}
-
+// CONFIK KICK PEMAIN DENGAN KONFIRMASI
 async function kickPlayer(playerId) {
-    const roomRef = doc(db, "rooms", currentRoomCode);
-    const roomSnap = await getDoc(roomRef);
-    if(roomSnap.exists()) {
-        const data = roomSnap.data(); 
-        delete data.players[playerId];
-        let newOrder = (data.playerOrder || []).filter(id => id !== playerId);
-        
-        let updateData = { players: data.players, playerOrder: newOrder };
-        if(data.currentTurn === playerId) {
-            updateData.currentTurn = data.hostId; // kembalikan ke host jika yang dikick sedang jalan
+    if(confirm("Apakah Anda yakin ingin mengeluarkan pemain ini dari room?")) {
+        const roomRef = doc(db, "rooms", currentRoomCode);
+        const roomSnap = await getDoc(roomRef);
+        if(roomSnap.exists()) {
+            const data = roomSnap.data(); 
+            delete data.players[playerId];
+            // Update turnOrder juga jika game sudah berjalan atau bersiap
+            let newOrder = data.turnOrder ? data.turnOrder.filter(id => id !== playerId) : [];
+            await updateDoc(roomRef, { players: data.players, turnOrder: newOrder });
         }
-        await updateDoc(roomRef, updateData);
     }
 }
 
@@ -453,18 +421,30 @@ async function leaveRoomAction() {
     try {
         await runTransaction(db, async (transaction) => {
             const roomSnap = await transaction.get(roomRef); if (!roomSnap.exists()) return;
-            const roomData = roomSnap.data(); delete roomData.players[currentUser.uid];
-            let newOrder = (roomData.playerOrder || []).filter(id => id !== currentUser.uid);
+            const roomData = roomSnap.data(); 
+            
+            // Atur giliran berikutnya jika pemain yang keluar adalah yang punya giliran aktif
+            let nextTurn = roomData.currentTurn;
+            let newOrder = roomData.turnOrder ? roomData.turnOrder.filter(id => id !== currentUser.uid) : [];
+            
+            if (roomData.currentTurn === currentUser.uid && newOrder.length > 0) {
+                let currentIndex = roomData.turnOrder.indexOf(currentUser.uid);
+                let nextIndex = (currentIndex + 1) % roomData.turnOrder.length;
+                if(roomData.turnOrder[nextIndex] === currentUser.uid) {
+                    nextIndex = (nextIndex + 1) % roomData.turnOrder.length;
+                }
+                nextTurn = roomData.turnOrder[nextIndex];
+            }
 
+            delete roomData.players[currentUser.uid];
             if (Object.keys(roomData.players).length === 0) { 
                 transaction.delete(roomRef); 
             } else { 
-                let updates = { players: roomData.players, playerOrder: newOrder };
-                if (roomData.currentTurn === currentUser.uid) {
-                    let nextIdx = ((roomData.playerOrder.indexOf(currentUser.uid) + 1) % roomData.playerOrder.length);
-                    updates.currentTurn = roomData.playerOrder[nextIdx] === currentUser.uid ? roomData.hostId : roomData.playerOrder[nextIdx];
-                }
-                transaction.update(roomRef, updates); 
+                transaction.update(roomRef, { 
+                    players: roomData.players,
+                    turnOrder: newOrder,
+                    currentTurn: nextTurn
+                }); 
             }
         });
     } catch (e) { console.error(e); }
@@ -479,47 +459,58 @@ function exitRoomCleanup() {
 }
 
 
-// ================= ACTIONS GUESS ENGINE (TURN BASED) =================
+// ================= ACTIONS GUESS ENGINE =================
 document.getElementById('guess-btn').addEventListener('click', async () => {
+    // PROTEKSI GILIRAN SAAT MULTIPLAYER
+    if (isMultiplayer && currentTurnPlayerId !== currentUser.uid) {
+        alert("Bukan giliranmu! Tunggu pemain lain menjawab.");
+        return;
+    }
+
     const inputEl = document.getElementById('guess-input'); const userGuess = parseInt(inputEl.value);
     const feedback = document.getElementById('feedback'); if (isNaN(userGuess) || inputEl.value === "") return;
 
-    // Tentukan indeks giliran selanjutnya (Over 1 giliran per jawaban)
-    let nextPlayerId = currentUser.uid;
-    if (isMultiplayer && playerOrder.length > 0) {
-        let currentIdx = playerOrder.indexOf(currentUser.uid);
-        let nextIdx = (currentIdx + 1) % playerOrder.length;
-        nextPlayerId = playerOrder[nextIdx];
-    }
-
-    if (userGuess === secretNumber) {
-        localCorrect++; 
-        feedback.innerText = "🎉 Benar! Angka diacak kembali!"; 
-        feedback.style.color = "#00ffcc";
-        saveStateToLocalStorage();
-
-        if (!isMultiplayer) { 
-            secretNumber = Math.floor(Math.random() * maxNumber) + 1; 
-            saveStateToLocalStorage(); 
+    if (!isMultiplayer) {
+        // Mode Singleplayer Tetap Normal
+        if (userGuess === secretNumber) {
+            localCorrect++; feedback.innerText = "🎉 Benar! Angka diacak kembali!"; feedback.style.color = "#00ffcc";
+            secretNumber = Math.floor(Math.random() * maxNumber) + 1; saveStateToLocalStorage();
         } else {
-            const newSecret = Math.floor(Math.random() * maxNumber) + 1;
-            await updateDoc(doc(db, "rooms", currentRoomCode), { 
-                [`players.${currentUser.uid}.correct`]: localCorrect,
-                secretNumber: newSecret,
-                currentTurn: nextPlayerId
-            });
+            localWrong++; feedback.innerText = userGuess < secretNumber ? "❌ Terlalu KECIL!" : "❌ Terlalu BESAR!";
+            feedback.style.color = "#ff3366"; saveStateToLocalStorage();
         }
     } else {
-        localWrong++; 
-        feedback.innerText = userGuess < secretNumber ? "❌ Terlalu KECIL!" : "❌ Terlalu BESAR!";
-        feedback.style.color = "#ff3366";
-        saveStateToLocalStorage();
+        // Logika Multiplayer Turn-Based (1 Jawaban Langsung Ganti Giliran)
+        const roomRef = doc(db, "rooms", currentRoomCode);
+        const roomSnap = await getDoc(roomRef);
+        
+        if(roomSnap.exists()) {
+            const roomData = roomSnap.data();
+            let isCorrect = (userGuess === secretNumber);
+            
+            let updatedCorrect = roomData.players[currentUser.uid].correct + (isCorrect ? 1 : 0);
+            let updatedWrong = roomData.players[currentUser.uid].wrong + (isCorrect ? 0 : 1);
+            
+            // Cari indeks giliran berikutnya
+            let currentIndex = roomData.turnOrder.indexOf(currentUser.uid);
+            let nextIndex = (currentIndex + 1) % roomData.turnOrder.length;
+            let nextPlayerId = roomData.turnOrder[nextIndex];
 
-        if (isMultiplayer) {
-            await updateDoc(doc(db, "rooms", currentRoomCode), { 
-                [`players.${currentUser.uid}.wrong`]: localWrong,
+            let payload = {
+                [`players.${currentUser.uid}.correct`]: updatedCorrect,
+                [`players.${currentUser.uid}.wrong`]: updatedWrong,
                 currentTurn: nextPlayerId
-            });
+            };
+
+            if (isCorrect) {
+                feedback.innerText = "🎉 Benar! Angka diacak kembali!"; feedback.style.color = "#00ffcc";
+                payload.secretNumber = Math.floor(Math.random() * maxNumber) + 1;
+            } else {
+                feedback.innerText = userGuess < secretNumber ? "❌ Terlalu KECIL!" : "❌ Terlalu BESAR!";
+                feedback.style.color = "#ff3366";
+            }
+
+            await updateDoc(roomRef, payload);
         }
     }
     inputEl.value = ""; inputEl.focus();
@@ -530,8 +521,6 @@ onSnapshot(doc(db, "rooms", currentRoomCode || "dummy"), (snap) => {
         const data = snap.data();
         if(data.status === "playing" && data.secretNumber !== secretNumber) {
             secretNumber = data.secretNumber; saveStateToLocalStorage();
-            document.getElementById('feedback').innerText = "🔄 Angka berhasil ditebak! Angka diacak ulang!";
-            document.getElementById('feedback').style.color = "#00f0ff";
         }
     }
 });
@@ -599,7 +588,6 @@ async function joinRoomAction(code) {
             const roomSnap = await transaction.get(roomRef); if (!roomSnap.exists()) throw "Room tidak ditemukan!";
             const roomData = roomSnap.data(); if (roomData.status !== "waiting") throw "Game sudah berjalan!";
             if (Object.keys(roomData.players).length >= 5) throw "Room Penuh!";
-            
             roomData.players[currentUser.uid] = { name: userData.username, avatar: userData.avatar, correct: 0, wrong: 0, isHost: false };
             transaction.update(roomRef, { players: roomData.players });
         });
@@ -615,20 +603,24 @@ document.getElementById('submit-join-code-btn').addEventListener('click', () => 
     const code = document.getElementById('join-room-code-input').value.trim(); if(code) joinRoomAction(code);
 });
 
-// MENYEMBUNYIKAN JUMLAH SKOR BENAR/SALAH SAAT LIVE MULTIPLAYER
-function renderInGameStatus(playersData) {
+// TIDAK MENAMPILKAN JUMLAH JAWABAN BENAR DAN SALAH SAAT PERMAINAN MULTIPLAYER BERLANGSUNG
+function renderInGameStatus(playersData, currentTurnId, turnOrder) {
     const container = document.getElementById('ingame-players-status'); container.innerHTML = "";
-    Object.keys(playersData).forEach(pId => {
+    
+    // Render urutan sesuai antrean turnOrder permainan
+    turnOrder.forEach(pId => {
         const p = playersData[pId];
-        const isCurrentTurn = (pId === currentTurnPlayerId);
+        if(!p) return;
+        
+        let isHisTurn = (pId === currentTurnId);
+        let borderStyle = isHisTurn ? 'border: 2px solid #00ffcc; background: rgba(0, 255, 204, 0.1);' : 'border: 1px solid #2d2d54;';
+        let turnLabel = isHisTurn ? `<div style="color:#00ffcc; font-size:11px; font-weight:bold; margin-top:3px;">• GILIRAN •</div>` : '';
         
         container.innerHTML += `
-            <div class="player-status-card" style="${pId === currentUser.uid ? 'border-color:#00e5ff;' : ''} ${isCurrentTurn ? 'box-shadow: 0 0 12px #9d4edd; border-color:#9d4edd;' : ''}">
+            <div class="player-status-card" style="${borderStyle}">
                 <span class="avatar">${p.avatar}</span>
-                <small>${p.name} ${p.isHost ? '👑' : ''}</small>
-                <div class="score" style="margin-top: 5px; font-size: 12px; color: ${isCurrentTurn ? '#9d4edd' : '#a0a0c0'};">
-                    ${isCurrentTurn ? '● SEDANG BERMAIN' : 'MENUNGGU'}
-                </div>
+                <small style="${isHisTurn ? 'color:#fff; font-weight:bold;' : ''}">${p.name}</small>
+                ${turnLabel}
             </div>`;
     });
 }
